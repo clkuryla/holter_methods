@@ -1,2 +1,2 @@
 # holter_methods
-Using 24 hour ECG recordings from holters to derive different metrics
+Using 24 hour ECG recordings from Holter monitors to derive different metrics

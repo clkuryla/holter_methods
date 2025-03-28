@@ -1,0 +1,114 @@
+#! /bin/sh
+# file: Make-Data	G. Moody	October 2008
+
+# This shell script creates the files containing RR interval time
+# series from 15 PhysioBank records.  See the file "RECORDS", in this
+# directory, for information about the original PhysioBank records
+# from which these time series come.
+
+# The time series were chosen for use by participants in the Chaos
+# controversy issue, "Is the Normal Heart Rate Chaotic?".  See
+#     http://physionet.org/challenge/chaos/
+# for details.
+#
+# Except for standard utilities available on any Unix(-like) platform, the
+# software used by this script comes from the WFDB and plt software packages,
+# available at
+#     http://physionet.org/physiotools/wfdb.shtml
+# and
+#     http://physionet.org/physiotools/plt/
+
+# First, make the "unfiltered" time series.  See
+# http://physionet.org/physiotools/wag/ann2rr-1.htm for a description of
+# ann2rr's options as used below.
+ann2rr >n1rr.txt -r nsrdb/16265 -a atr -c -i s3 -v s3 -w -f 0 -t 22:14:0
+ann2rr >n2rr.txt -r nsrdb/16272 -a atr -c -i s3 -v s3 -w -f 0 -t 23:26:0
+ann2rr >n3rr.txt -r nsrdb/16786 -a atr -c -i s3 -v s3 -w -f 0 -t 23:20:0
+ann2rr >n4rr.txt -r nsrdb/16795 -a atr -c -i s3 -v s3 -w -f 0 -t 20:45:0
+ann2rr >n5rr.txt -r nsrdb/19090 -a atr -c -i s3 -v s3 -w -f 0:35 -t 19:13:0
+ann2rr >c1rr.txt -r chfdb/chf01 -a ecg -c -i s3 -v s3 -w
+ann2rr >c2rr.txt -r chfdb/chf03 -a ecg -c -i s3 -v s3 -w
+ann2rr >c3rr.txt -r chfdb/chf07 -a ecg -c -i s3 -v s3 -w
+ann2rr >c4rr.txt -r chfdb/chf08 -a ecg -c -i s3 -v s3 -w
+ann2rr >c5rr.txt -r chfdb/chf12 -a ecg -c -i s3 -v s3 -w
+ann2rr >a1rr.txt -r ltafdb/11 -a qrs -c -i s3 -v s3 -w -f 11:0 -t 20:10:0
+ann2rr >a2rr.txt -r ltafdb/12 -a qrs -c -i s3 -v s3 -w -f 1:0 -t e
+ann2rr >a3rr.txt -r ltafdb/15 -a qrs -c -i s3 -v s3 -w -f 5:10 -t 23:57:0
+ann2rr >a4rr.txt -r ltafdb/17 -a qrs -c -i s3 -v s3 -w -f 1:0 -t 24:31:0
+ann2rr >a5rr.txt -r ltafdb/18 -a qrs -c -i s3 -v s3 -w -f 1:0 -t 24:28:0
+
+# Next, make the "filtered" time series.  In sinus rhythm, "nguess"
+# replaces abnormal beats and fills gaps with "Q" annotations, and
+# ann2rr's -p and -P options cause it to remove all intervals not
+# bounded by "N" annotations.
+
+nguess -r nsrdb/16265 -a atr
+ann2rr >n1nn.txt -r nsrdb/16265 -a nguess -c -i s3 -v s3 -w -p N -P N \
+ -f 0 -t 22:14:0
+
+nguess -r nsrdb/16272 -a atr
+ann2rr >n2nn.txt -r nsrdb/16272 -a nguess -c -i s3 -v s3 -w -p N -P N \
+ -f 0 -t 23:26:0
+
+nguess -r nsrdb/16786 -a atr
+ann2rr >n3nn.txt -r nsrdb/16786 -a nguess -c -i s3 -v s3 -w -p N -P N \
+ -f 0 -t 23:20:0
+
+nguess -r nsrdb/16795 -a atr
+ann2rr >n4nn.txt -r nsrdb/16795 -a nguess -c -i s3 -v s3 -w -p N -P N \
+ -f 0 -t 20:45:0
+
+nguess -r nsrdb/19090 -a atr
+ann2rr >n5nn.txt -r nsrdb/19090 -a nguess -c -i s3 -v s3 -w -p N -P N \
+ -f 0:35 -t 19:13:0
+
+# See http://physionet.org/physiotools/wag/nguess-1.htm for an
+# explanation of the -m option used below.  The effect is to reject
+# outliers in these CHF time series, which include many sinus pauses,
+# more aggressively than the default strategy used for the healthy
+# cases above.
+
+nguess -r chfdb/chf01 -a ecg -m 1.6
+ann2rr >c1nn.txt -r chfdb/chf01 -a nguess -c -i s3 -v s3 -w -p N -P N
+
+nguess -r chfdb/chf03 -a ecg -m 1.6
+ann2rr >c2nn.txt -r chfdb/chf03 -a nguess -c -i s3 -v s3 -w -p N -P N
+
+nguess -r chfdb/chf07 -a ecg -m 1.6
+ann2rr >c3nn.txt -r chfdb/chf07 -a nguess -c -i s3 -v s3 -w -p N -P N
+
+nguess -r chfdb/chf08 -a ecg -m 1.6
+ann2rr >c4nn.txt -r chfdb/chf08 -a nguess -c -i s3 -v s3 -w -p N -P N
+
+nguess -r chfdb/chf12 -a ecg -m 1.6
+ann2rr >c5nn.txt -r chfdb/chf12 -a nguess -c -i s3 -v s3 -w -p N -P N
+
+# The "nguess" application cannot be usefully applied to atrial fibrillation,
+# so it's not used for these 5 time series.
+
+ann2rr >a1nn.txt -r ltafdb/11 -a qrs -c -i s3 -v s3 -w -p N -P N \
+ -f 11:0 -t 20:10:0
+ann2rr >a2nn.txt -r ltafdb/12 -a qrs -c -i s3 -v s3 -w -p N -P N \
+ -f 1:0 -t e
+ann2rr >a3nn.txt -r ltafdb/15 -a qrs -c -i s3 -v s3 -w -p N -P N \
+ -f 5:10 -t 23:57:0
+ann2rr >a4nn.txt -r ltafdb/17 -a qrs -c -i s3 -v s3 -w -p N -P N \
+ -f 1:0 -t 24:31:0
+ann2rr >a5nn.txt -r ltafdb/18 -a qrs -c -i s3 -v s3 -w -p N -P N \
+ -f 1:0 -t 24:28:0
+
+# Generate a set of plots for visual review of the time series.
+
+for i in *.txt
+do
+  R=`basename $i .txt`
+  plt $i 2 0 -X 0 100000 -Y 0 2 -x "Elapsed time (seconds)" \
+    -y "RR interval (seconds)" -t $i -T lw | lwcat -pdf >$R.pdf
+done
+
+# Generate MD5, SHA1, and SHA256 checksums that can be used to verify that
+# these files have not been altered since they were generated.
+
+md5sum *.txt *.pdf >MD5SUMS
+sha1sum *.txt *.pdf >SHA1SUMS
+sha256sum *.txt *.pdf >SHA256SUMS

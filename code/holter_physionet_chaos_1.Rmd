@@ -1,0 +1,549 @@
+---
+title: "Holter Physionet EDA"
+author: "Christine Lucille Kuryla"
+date: "2025-03-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(tidyverse)
+
+```
+
+```{r}
+
+library(tidyverse)
+
+library(tidyverse)
+
+# Path to your folder
+folder_path <- here("data/physionet_15/is-the-normal-heart-rate-chaotic-1.0.0/")
+
+file_list <- list.files(
+  path = folder_path,
+  pattern = "nn\\.txt$",
+  full.names = TRUE
+)
+
+# ------------------------------------------------------------------------
+# 3. Read and combine all matching files into a single data frame
+#    - set_names() uses each path string as a name so map_dfr(.id = "filename")
+#      will store that path in the 'filename' column.
+#    - read_table() is used here with col_names = c("col1", "marker", "col2")
+#      to match your file structure. Adjust as needed.
+#    - mutate(filename_short = basename(filename)) adds the short filename 
+#      (e.g. "123_nn.txt" vs. the full path).
+# ------------------------------------------------------------------------
+combined_df <- file_list %>%
+  set_names() %>%  # sets names so ".id" will track the original path
+  map_dfr(
+    .f = ~ readr::read_table(.x, col_names = c("ibi", "marker", "time_sec")),
+    .id = "filename"
+  ) %>%
+  mutate(filename_short = basename(filename))
+
+# ------------------------------------------------------------------------
+# 4. Basic inspection
+# ------------------------------------------------------------------------
+glimpse(combined_df)
+head(combined_df)
+
+# For example, look at how many rows came from each file:
+combined_df %>%
+  count(filename_short)
+
+# ------------------------------------------------------------------------
+# 5. (Optional) If you only want the filename stem (e.g. "123_nn" without .txt),
+#    you can use tools::file_path_sans_ext(), or a simple sub() / gsub().
+# ------------------------------------------------------------------------
+combined_df <- combined_df %>%
+  mutate(id = tools::file_path_sans_ext(filename_short)) %>% 
+  select(c(id, time_sec, ibi)) %>% 
+  mutate(
+    condition = case_when(
+      str_starts(id, "a") ~ "AF",     # If starts with 'a'
+      str_starts(id, "n") ~ "Normal", # If starts with 'n'
+      str_starts(id, "c") ~ "CHF",    # If starts with 'c'
+      TRUE                          ~ "Unknown"    # For anything else
+    )
+  ) %>% 
+  mutate(
+    status = case_when(
+      condition %in% c("AF", "Normal") ~ "Healthy",
+      condition == "CHF" ~ "CHF",
+      TRUE ~ "Unknown"  # or another default if desired
+    )
+  )
+  
+
+data_holter <- combined_df
+  
+glimpse(data_holter)
+  
+```
+
+
+# Calculate downsampled HR
+
+```{r}
+
+# calculate heart rate, rmssd, sdnn every minute
+
+data_holter_minute <- data_holter %>%
+  # Ensure data is ordered by time before we take diffs
+  arrange(id, time_sec) %>%
+  mutate(
+    minute_index = floor(time_sec / 60)
+  ) %>%
+  group_by(id, condition, status, minute_index) %>%
+  summarize(
+    mean_hr = mean(60 / ibi, na.rm = TRUE),
+    # SDNN: standard deviation of the IBIs in that minute
+    sdnn = sd(ibi, na.rm = TRUE),
+    # RMSSD: square root of mean of squared differences of successive IBI
+    rmssd = {
+      # We compute consecutive differences of ibi within the group
+      diffs <- diff(ibi)
+      sqrt(mean(diffs^2, na.rm = TRUE))
+    },
+    n_beats = n(),
+    .groups = "drop"
+  ) %>%
+  # If desired, a time stamp for each minute
+  mutate(minute_start_sec = minute_index * 60) %>%
+  arrange(id, minute_index)
+
+# downsample to every 5 minutes
+data_holter_downsampled <- data_holter_minute %>%
+  filter(minute_index %% 5 == 1) %>% 
+  mutate(time_5min = minute_index/5)
+
+# If you need a different offset (e.g., 1, 6, 11, etc.), you can adjust accordingly:
+# filter(minute_index %% 5 == 1)
+
+```
+
+# Features
+
+```{r}
+
+library(dplyr)
+library(pracma)
+library(nonlinearTseries)
+library(DescTools)
+
+data_holter_minute_metrics <- data_holter_minute %>%
+  group_by(id, condition, status) %>%
+  summarize(
+    ApEn_HR   = approx_entropy(mean_hr, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    SampEn_HR = sample_entropy(mean_hr, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    ApEn_RMSSD   = approx_entropy(rmssd, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    SampEn_RMSSD = sample_entropy(rmssd, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    ApEn_SDNN   = approx_entropy(sdnn, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    SampEn_SDNN = sample_entropy(sdnn, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    Mean_HR = mean(mean_hr),
+    Median_HR = median(mean_hr),
+    Max_HR = max(mean_hr),
+    Min_HR = min(mean_hr),
+    IQR_HR = IQR(mean_hr),
+    SD_HR = sd(mean_hr),
+    CV_HR   = 100 * SD_HR / Mean_HR,
+    Mean_RMSSD = mean(rmssd),
+    Median_RMSSD = median(rmssd),
+    Max_RMSSD = max(rmssd),
+    Min_RMSSD = min(rmssd),
+    IQR_RMSSD = IQR(rmssd),
+    SD_RMSSD = sd(rmssd),
+    CV_RMSSD   = 100 * SD_RMSSD / Mean_RMSSD,
+    Mean_SDNN = mean(sdnn),
+    Median_SDNN = median(sdnn),
+    Max_SDNN = max(sdnn),
+    Min_SDNN = min(sdnn),
+    IQR_SDNN = IQR(sdnn),
+    SD_SDNN = sd(sdnn),
+    CV_SDNN   = 100 * SD_SDNN / Mean_SDNN,
+    alpha_DFA_HR = {
+      # Extract this subject's HR vector
+      x <- mean_hr
+      x <- x[!is.na(x)]  # remove any NA values
+      
+      # If there aren't enough points to meaningfully do DFA, return NA
+      if (length(x) < 20) {
+        NA_real_
+      } else {
+        # Compute DFA on the vector 'x'
+        # Adjust window.size.range and npoints as needed
+        dfa_res <- dfa(
+          x,
+          window.size.range = c(4, floor(length(x) / 4)), 
+          npoints = 20,
+          doPlot = FALSE
+        )
+        # The 'slope' in dfa_res is the alpha exponent
+        dfa_res$the.slope
+      }
+    },
+  #  PermEn_HR = PermutationEntropy(mean_hr, order = 3), # Adjust 'order' for embedding dimension. Default might be 3 or 4.
+    acf_lag1_HR = {
+      x <- mean_hr[!is.na(mean_hr)]
+      if (length(x) < 2) {
+        NA_real_
+      } else {
+        acf_res <- acf(x, lag.max = 1, plot = FALSE)
+        acf_res$acf[2]  # lag 1 correlation
+      }
+    },
+    .groups = "drop"
+  )
+
+data_holter_downsampled_metrics <- data_holter_downsampled %>%
+  group_by(id, condition, status) %>%
+  summarize(
+    ApEn_HR   = approx_entropy(mean_hr, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    SampEn_HR = sample_entropy(mean_hr, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    ApEn_RMSSD   = approx_entropy(rmssd, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    SampEn_RMSSD = sample_entropy(rmssd, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    ApEn_SDNN   = approx_entropy(sdnn, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    SampEn_SDNN = sample_entropy(sdnn, edim = 2, r = 0.2 * sd(mean_hr, na.rm = TRUE)),
+    Mean_HR = mean(mean_hr),
+    Median_HR = median(mean_hr),
+    Max_HR = max(mean_hr),
+    Min_HR = min(mean_hr),
+    IQR_HR = IQR(mean_hr),
+    SD_HR = sd(mean_hr),
+    CV_HR   = 100 * SD_HR / Mean_HR,
+    Mean_RMSSD = mean(rmssd),
+    Median_RMSSD = median(rmssd),
+    Max_RMSSD = max(rmssd),
+    Min_RMSSD = min(rmssd),
+    IQR_RMSSD = IQR(rmssd),
+    SD_RMSSD = sd(rmssd),
+    CV_RMSSD   = 100 * SD_RMSSD / Mean_RMSSD,
+    Mean_SDNN = mean(sdnn),
+    Median_SDNN = median(sdnn),
+    Max_SDNN = max(sdnn),
+    Min_SDNN = min(sdnn),
+    IQR_SDNN = IQR(sdnn),
+    SD_SDNN = sd(sdnn),
+    CV_SDNN   = 100 * SD_SDNN / Mean_SDNN,
+    alpha_DFA_HR = {
+      # Extract this subject's HR vector
+      x <- mean_hr
+      x <- x[!is.na(x)]  # remove any NA values
+
+      # If there aren't enough points to meaningfully do DFA, return NA
+      if (length(x) < 20) {
+        NA_real_
+      } else {
+        # Compute DFA on the vector 'x'
+        # Adjust window.size.range and npoints as needed
+        dfa_res <- dfa(
+          x,
+          window.size.range = c(4, floor(length(x) / 4)),
+          npoints = 20,
+          doPlot = FALSE
+        )
+        # The 'slope' in dfa_res is the alpha exponent
+        dfa_res$the.slope
+      }
+    },
+  #  PermEn_HR = PermutationEntropy(mean_hr, order = 3), # Adjust 'order' for embedding dimension. Default might be 3 or 4.
+    acf_lag1_HR = {
+      x <- mean_hr[!is.na(mean_hr)]
+      if (length(x) < 2) {
+        NA_real_
+      } else {
+        acf_res <- acf(x, lag.max = 1, plot = FALSE)
+        acf_res$acf[2]  # lag 1 correlation
+      }
+    },
+  alpha_DFA_HR = {
+      x <- mean_hr[!is.na(mean_hr)]
+      if (length(x) < 20) {
+        NA_real_
+      } else {
+        # Run dfa(), ignoring the plotting warning
+        dfa_res <- suppressWarnings(
+          dfa(x, window.size.range = c(4, floor(length(x)/4)),
+              npoints = 20, plot = FALSE)
+        )
+        # Manually compute slope in log–log space
+        fit <- lm(log(dfa_res$fluctuation.function) ~ 
+                  log(dfa_res$window.sizes))
+        coef(fit)[2]  # alpha
+      }
+    },
+    .groups = "drop"
+  )
+
+
+```
+
+
+
+
+
+
+```{r}
+
+
+# Install packages if you don’t have them
+# install.packages(c("dplyr", "tidyr", "purrr", "broom", "ggplot2"))
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(broom)
+library(ggplot2)
+
+#--------------------------------------------------------------------
+# EXAMPLE DATA
+#--------------------------------------------------------------------
+# Suppose your data looks like this:
+# df_metrics <- data.frame(
+#   id        = c("a1nn", "a2nn", "a3nn", "b1nn", "b2nn", "b3nn"),
+#   status    = c("Healthy", "Healthy", "Healthy", "Unhealthy", "Unhealthy", "Unhealthy"),
+#   condition = c("AF", "SR", "AF", "SR", "AF", "VB"),
+#   mean_hr   = rnorm(6, 70, 5),
+#   sdnn      = rnorm(6, 50, 5),
+#   rmssd     = rnorm(6, 40, 5)
+# )
+#
+# In your case, read or construct the real data frame similarly.
+
+df_metrics <- data_holter_downsampled_metrics  # <-- Replace with your actual data
+
+#--------------------------------------------------------------------
+# 1. Pivot longer so each metric is in a single column
+#--------------------------------------------------------------------
+df_long <- df_metrics %>%
+  # # Keep only columns that are numeric metrics
+  # select(-id, -status, -condition, everything()) %>%  # reorder if you want
+  # # The above line ensures we remove id, status, condition, and keep everything else
+  # bind_cols(
+  #   df_metrics %>% select(id, status, condition)  # re-add these columns
+  # ) %>%
+  # Reorder columns so that id/status/condition come first
+  relocate(id, status, condition) %>%
+  pivot_longer(
+    cols = -c(id, status, condition),
+    names_to = "metric",
+    values_to = "value"
+  ) %>%
+  # Make sure we only keep numeric values, in case there’s leftover text
+  filter(is.numeric(value))
+
+# Alternatively, you could do:
+# df_long <- df_metrics %>%
+#   select(id, status, condition, where(is.numeric)) %>%
+#   pivot_longer(
+#     cols = -c(id, status, condition),
+#     names_to = "metric",
+#     values_to = "value"
+#   )
+
+#--------------------------------------------------------------------
+# 2. Compare two groups (status) with t-tests or Wilcoxon rank-sum
+#--------------------------------------------------------------------
+
+# A. Optional: check normality by Shapiro test or similar within each group
+#    If data are large, Shapiro test may be too sensitive – you might rely on a
+#    distribution plot or Q-Q plot. For simplicity, let's skip that step or do it
+#    in a quick approach:
+
+df_status_tests <- df_long %>%
+  group_by(metric) %>%
+  group_modify(~ {
+    # .x is the data for each metric
+    # We'll do a t-test by default; if you want to switch to Wilcoxon based on
+    # normality, you can do that here. This example always runs both for illustration.
+
+    data_for_metric <- .x
+
+    # T-test
+    ttest_res <- t.test(value ~ status, data = data_for_metric)
+    ttest_tidy <- tidy(ttest_res) %>%
+      mutate(test = "t-test")
+
+    # Wilcoxon
+    wilcox_res <- wilcox.test(value ~ status, data = data_for_metric)
+    wilcox_tidy <- tidy(wilcox_res) %>%
+      mutate(test = "wilcoxon-rank-sum")
+
+    bind_rows(ttest_tidy, wilcox_tidy)
+  }) %>%
+  ungroup()
+
+df_status_tests
+# -> This will create a data frame with columns: metric, test, estimate, statistic, p.value, conf.low, conf.high, etc.
+
+# B. Boxplot for each metric by status
+ggplot(df_long, aes(x = status, y = value)) +
+  geom_boxplot() +
+  facet_wrap(~ metric, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Boxplots of Each Metric by Status")
+
+#--------------------------------------------------------------------
+# 3. Compare three groups (condition) with ANOVA or Kruskal–Wallis
+#--------------------------------------------------------------------
+
+df_condition_tests <- df_long %>%
+  group_by(metric) %>%
+  group_modify(~ {
+    data_for_metric <- .x
+
+    # One-way ANOVA
+    anova_mod <- aov(value ~ condition, data = data_for_metric)
+    anova_tidy <- tidy(anova_mod) %>%
+      mutate(test = "ANOVA")
+
+    # Kruskal–Wallis
+    kruskal_res <- kruskal.test(value ~ condition, data = data_for_metric)
+    kruskal_tidy <- tidy(kruskal_res) %>%
+      mutate(test = "Kruskal–Wallis")
+
+    bind_rows(anova_tidy, kruskal_tidy)
+  }) %>%
+  ungroup()
+
+df_condition_tests
+# -> Similar structure: columns for metric, test, statistic, p.value, etc.
+
+# If ANOVA is significant, you might do pairwise t-tests with corrections:
+# pairwise.t.test(df_for_metric$value, df_for_metric$condition, p.adjust.method = "bonferroni")
+
+# C. Boxplots for each metric by condition
+ggplot(df_long, aes(x = condition, y = value)) +
+  geom_boxplot() +
+  facet_wrap(~ metric, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Boxplots of Each Metric by Condition")
+
+#--------------------------------------------------------------------
+# 4. Interpreting Results
+#--------------------------------------------------------------------
+# - df_status_tests: results of t-test + Wilcoxon for two-group comparison
+# - df_condition_tests: results of ANOVA + Kruskal–Wallis for three-group comparison
+# - For significant results, you may want pairwise post-hoc tests (Tukey, Dunn's, etc.).
+# - Make sure the assumptions of the tests (normality, variance homogeneity) are reasonably met
+#   or that the nonparametric alternatives are used.
+
+
+
+```
+
+```{r}
+
+# Install packages if needed:
+# install.packages(c("dplyr", "tidyr", "ggplot2", "purrr", "RColorBrewer"))
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(purrr)
+
+#----------------------------------------------------
+# 0) Data Setup
+#----------------------------------------------------
+# Let's assume your data frame is called `df_metrics`,
+# with columns: id, status, condition, plus numeric metrics.
+
+# Example skeleton:
+# df_metrics <- data.frame(
+#   id = ...,
+#   status = ...,      # Factor with 2 levels
+#   condition = ...,   # Factor with 3 levels
+#   mean_hr = ...,     # Numeric
+#   sdnn = ...,        # Numeric
+#   rmssd = ...        # Numeric
+#   # possibly more metrics...
+# )
+
+#----------------------------------------------------
+# 1) Prepare numeric data for PCA
+#----------------------------------------------------
+# Remove non-numeric columns and scale the data
+df_num <- df_metrics %>%
+  select(where(is.numeric)) %>%
+  select(where(~ sd(.x, na.rm = TRUE) > 0)) %>% 
+  drop_na()  # optional: drop any rows with NAs for simplicity
+
+# Perform PCA
+# center = TRUE and scale. = TRUE ensures variables have mean 0, sd 1
+pca_res <- prcomp(df_num, center = TRUE, scale. = TRUE)
+
+# Extract the proportion of variance explained
+var_explained <- (pca_res$sdev^2) / sum(pca_res$sdev^2)
+var_explained_pc <- round(var_explained * 100, 2)  # in percent
+
+#----------------------------------------------------
+# 2) Create a heatmap of loadings for PC1 to PC7
+#----------------------------------------------------
+# pca_res$rotation is a matrix of loadings, rows=variables, cols=PCs
+loadings_df <- as.data.frame(pca_res$rotation) %>%
+  # Keep only the first 7 PCs (if there are at least 7)
+  select(PC1, PC2, PC3, PC4, PC5, PC6, PC7) %>%
+  rownames_to_column(var = "variable") %>%
+  pivot_longer(
+    cols = starts_with("PC"),
+    names_to = "PC",
+    values_to = "loading"
+  )
+
+# We'll make a nicer label for each PC, showing variance explained:
+pc_labels <- paste0(
+  c("PC1","PC2","PC3","PC4","PC5","PC6","PC7"), "\n(",
+  var_explained_pc[1:7], "%)"
+)
+
+# Map PC1..PC7 to these labels:
+pc_lut <- setNames(pc_labels, paste0("PC", 1:7))
+
+# Heatmap
+ggplot(loadings_df, aes(x = PC, y = variable, fill = loading)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_x_discrete(labels = pc_lut) +
+  labs(
+    title = "Variable Loadings on First 7 PCs",
+    x = "Principal Component",
+    y = "Variable",
+    fill = "Loading"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#----------------------------------------------------
+# 3) Make a biplot
+#----------------------------------------------------
+# We'll do a simple base R biplot for convenience:
+biplot(pca_res, scale = 0, cex = 0.6)
+# or for a bit more control, you can build a ggplot-based biplot yourself.
+
+#----------------------------------------------------
+# 4) PC1 vs PC2 colored by condition, shaped by status
+#----------------------------------------------------
+# We'll extract the PCA scores (coordinates of each row in df_num)
+scores <- as.data.frame(pca_res$x)
+scores <- cbind(scores, df_metrics %>% select(id, status, condition))
+
+# Axis labels with variance explained
+pc1_lab <- paste0("PC1 (", var_explained_pc[1], "%)")
+pc2_lab <- paste0("PC2 (", var_explained_pc[2], "%)")
+
+ggplot(scores, aes(x = PC1, y = PC2,
+                   color = condition, shape = status)) +
+  geom_point(size = 2) +
+  labs(
+    title = "PC1 vs PC2",
+    x = pc1_lab,
+    y = pc2_lab
+  ) +
+  theme_minimal()
+
+
+```
+

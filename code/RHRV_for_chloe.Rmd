@@ -1,0 +1,205 @@
+---
+title: "For Chloe"
+author: "Christine Lucille Kuryla"
+date: "2025-03-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(tidyverse)
+
+```
+
+```{r}
+
+
+# Path to your folder
+# data is at https://physionet.org/content/chaos-heart-rate/1.0.0/
+folder_path <- here("data_big/physionet_15/is-the-normal-heart-rate-chaotic-1.0.0/")
+
+file_list <- list.files(
+  path = folder_path,
+  pattern = "nn\\.txt$",
+  full.names = TRUE
+)
+
+# ------------------------------------------------------------------------
+# 3. Read and combine all matching files into a single data frame
+#    - set_names() uses each path string as a name so map_dfr(.id = "filename")
+#      will store that path in the 'filename' column.
+#    - read_table() is used here with col_names = c("col1", "marker", "col2")
+#      to match your file structure. Adjust as needed.
+#    - mutate(filename_short = basename(filename)) adds the short filename 
+#      (e.g. "123_nn.txt" vs. the full path).
+# ------------------------------------------------------------------------
+combined_df <- file_list %>%
+  set_names() %>%  # sets names so ".id" will track the original path
+  map_dfr(
+    .f = ~ readr::read_table(.x, col_names = c("ibi", "marker", "time_sec")),
+    .id = "filename"
+  ) %>%
+  mutate(filename_short = basename(filename))
+
+# ------------------------------------------------------------------------
+# 4. Basic inspection
+# ------------------------------------------------------------------------
+glimpse(combined_df)
+head(combined_df)
+
+# For example, look at how many rows came from each file:
+combined_df %>%
+  count(filename_short)
+
+# ------------------------------------------------------------------------
+# 5. (Optional) If you only want the filename stem (e.g. "123_nn" without .txt),
+#    you can use tools::file_path_sans_ext(), or a simple sub() / gsub().
+# ------------------------------------------------------------------------
+combined_df <- combined_df %>%
+  mutate(id = tools::file_path_sans_ext(filename_short)) %>% 
+  select(c(id, time_sec, ibi)) %>% 
+  mutate(
+    condition = case_when(
+      str_starts(id, "a") ~ "AF",     # If starts with 'a'
+      str_starts(id, "n") ~ "Normal", # If starts with 'n'
+      str_starts(id, "c") ~ "CHF",    # If starts with 'c'
+      TRUE                          ~ "Unknown"    # For anything else
+    )
+  ) %>% 
+  mutate(
+    status = case_when(
+      condition %in% c("AF", "Normal") ~ "Healthy",
+      condition == "CHF" ~ "CHF",
+      TRUE ~ "Unknown"  # or another default if desired
+    )
+  )
+  
+
+data_holter <- combined_df
+  
+glimpse(data_holter)
+  
+```
+
+# Separate out sections of interest
+
+```{r}
+
+# Labeling sections of 5 minutes
+
+data_holter_5_minute_rr <- data_holter %>%
+  # Ensure data is ordered by time before we take diffs
+  arrange(id, time_sec) %>%
+  mutate(
+    minute_index = floor(time_sec / 300)
+  ) 
+
+# Labeling sections of 1 minute
+
+data_holter_1_minute_rr <- data_holter %>%
+  arrange(id, time_sec) %>%
+  mutate(
+    minute_index = floor(time_sec / 60)
+  ) 
+
+# Selecting one minute-long section every 5 minutes to match Fitbit/Oura
+
+data_holter_downsampled_rr <- data_holter_1_minute_rr %>%
+  filter(minute_index %% 5 == 0) 
+
+```
+
+
+# Create function to perform metric calculations
+
+```{r}
+rhrv_extraction <- function(data_holter_rr) {
+  # Get unique combinations of id, condition, status
+  unique_groups <- unique(data_holter_rr[, c("id", "condition", "status", "minute_index")])
+  
+  # Create an empty data frame to store results
+  results <- data.frame()
+  
+  # Process each group separately
+  for (i in 1:nrow(unique_groups)) {
+    # Extract current group info
+    current_id <- unique_groups$id[i]
+    current_condition <- unique_groups$condition[i]
+    current_status <- unique_groups$status[i]
+    current_minute_index <- unique_groups$minute_index[i]
+    
+    # Filter data for this group
+    group_data <- subset(data_holter_rr, 
+                         id == current_id & 
+                         condition == current_condition & 
+                         status == current_status &
+                         minute_index == current_minute_index)
+    
+    # Skip if no data for this group
+    if (nrow(group_data) == 0) next
+    
+    # Create a new HRV data object
+    hrv_data <- CreateHRVData()
+    
+    # Set verbosity (single value)
+    hrv_data <- SetVerbose(hrv_data, FALSE)
+    
+    try({
+      # Load beat times - using absolute timestamps
+      hrv_data <- LoadBeatVector(hrv_data, group_data$ibi)
+      
+      # Build and filter NIHR
+      hrv_data <- BuildNIHR(hrv_data)
+      hrv_data <- FilterNIHR(hrv_data)
+      
+      # Interpolate NIHR
+      hrv_data <- InterpolateNIHR(hrv_data, freqhr = 4)
+      
+      # Time analysis
+      hrv_data <- CreateTimeAnalysis(hrv_data)
+      
+      # Calculate average heart rate (60 / average IBI in seconds)
+      avg_hr <- 60 / mean(group_data$ibi, na.rm = TRUE)
+      
+      # Extract metrics
+      # First check if the metric is empty, if not, then continue and extract metric
+      sdnn <- ifelse(!is.null(hrv_data$TimeAnalysis) && length(hrv_data$TimeAnalysis) > 0, 
+                     hrv_data$TimeAnalysis[[1]]$SDNN, NA)
+      rmssd <- ifelse(!is.null(hrv_data$TimeAnalysis) && length(hrv_data$TimeAnalysis) > 0, 
+                      hrv_data$TimeAnalysis[[1]]$rMSSD, NA)
+      hrvi <- ifelse(!is.null(hrv_data$TimeAnalysis) && length(hrv_data$TimeAnalysis) > 0, 
+                     hrv_data$TimeAnalysis[[1]]$HRVi, NA)
+      
+      # Place in df
+      group_result <- data.frame(
+        id = current_id,
+        condition = current_condition,
+        status = current_status,
+        minute_index = current_minute_index,
+        avg_hr = avg_hr,  # Added average heart rate
+        sdnn = sdnn,
+        rmssd = rmssd,
+        hrvi = hrvi
+      )
+      
+      # Append to results
+      results <- rbind(results, group_result)
+    }, silent = TRUE)
+  }
+  
+  return(results)
+}
+```
+
+# Apply function to different dataframes
+
+```{r}
+library(RHRV)
+metrics_5_minute <- rhrv_extraction(data_holter_5_minute_rr)
+metrics_1_minute <- rhrv_extraction(data_holter_1_minute_rr)
+metrics_downsampled <- rhrv_extraction(data_holter_downsampled_rr)
+
+```
+
+

@@ -281,7 +281,94 @@ data_holter_downsampled_metrics <- data_holter_downsampled %>%
 
 ```
 
+# Calculate metrics, include catch 22
 
+```{r}
+
+library(Rcatch22)
+library(pracma)
+
+# Function to calculate all metrics for a single variable
+calculate_metrics <- function(data_vector) {
+  catch22_all(data = data_vector, catch24 = TRUE) %>% 
+    bind_rows(
+      tibble(
+        names = c("mean", "sd", "max", "min", "cv", "iqr", "median", "apen", "sampen"),
+        values = c(
+          mean(data_vector, na.rm = TRUE),
+          sd(data_vector, na.rm = TRUE),
+          max(data_vector, na.rm = TRUE),
+          min(data_vector, na.rm = TRUE),
+          # For coefficient of variation, check mean!=0 to avoid Inf/NaN
+          sd(data_vector, na.rm = TRUE) / mean(data_vector, na.rm = TRUE),
+          IQR(data_vector, na.rm = TRUE),
+          median(data_vector, na.rm = TRUE),
+          approx_entropy(data_vector, edim = 2, r = 0.2 * sd(data_vector, na.rm = TRUE)),
+          sample_entropy(data_vector, edim = 2, r = 0.2 * sd(data_vector, na.rm = TRUE))
+        )
+      )
+    )
+}
+
+# Process data for all three metrics: avg_hr, sdnn, and rmssd
+results <- data_holter_downsampled %>%
+  mutate(avg_hr = mean_hr) %>% 
+  group_by(id, condition, status) %>%
+  
+  # Create separate list-columns for each metric
+  summarize(
+    avg_hr_stats = list(calculate_metrics(avg_hr)),
+    sdnn_stats = list(calculate_metrics(sdnn)),
+    rmssd_stats = list(calculate_metrics(rmssd)),
+    .groups = "drop"   # Ungroup after summarizing
+  )
+
+# Process avg_hr metrics
+avg_hr_results <- results %>%
+  select(id, condition, status, avg_hr_stats) %>%
+  unnest(cols = avg_hr_stats) %>%
+  pivot_wider(
+    names_from = names,
+    values_from = values,
+    names_prefix = "avg_hr_"
+  )
+
+# Process sdnn metrics
+sdnn_results <- results %>%
+  select(id, condition, status, sdnn_stats) %>%
+  unnest(cols = sdnn_stats) %>%
+  pivot_wider(
+    names_from = names,
+    values_from = values,
+    names_prefix = "sdnn_"
+  )
+
+# Process rmssd metrics
+rmssd_results <- results %>%
+  select(id, condition, status, rmssd_stats) %>%
+  unnest(cols = rmssd_stats) %>%
+  pivot_wider(
+    names_from = names,
+    values_from = values,
+    names_prefix = "rmssd_"
+  )
+
+# Join all results together
+final_results <- avg_hr_results %>%
+  left_join(sdnn_results, by = c("id", "condition", "status")) %>%
+  left_join(rmssd_results, by = c("id", "condition", "status"))
+
+# --- Example check of the resulting data ---
+head(final_results)
+
+# --- Sanity checks ---
+# Check for missing values in key metrics
+colSums(is.na(final_results))
+
+# Check for infinite values
+colSums(sapply(final_results, is.infinite))
+
+```
 
 
 
@@ -314,6 +401,9 @@ library(ggplot2)
 # In your case, read or construct the real data frame similarly.
 
 df_metrics <- data_holter_downsampled_metrics  # <-- Replace with your actual data
+df_metrics <- final_results
+df_metrics <- avg_hr_results %>% 
+  filter(condition != "AF")
 
 #--------------------------------------------------------------------
 # 1. Pivot longer so each metric is in a single column

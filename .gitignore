@@ -1,3 +1,6 @@
+# Data too big
+data_big/
+
 # History files
 .Rhistory
 .Rapp.history

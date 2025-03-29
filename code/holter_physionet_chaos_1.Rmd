@@ -12,6 +12,10 @@ library(tidyverse)
 
 ```
 
+These are from: https://physionet.org/content/chaos-heart-rate/1.0.0/
+
+In this Rmd, we take 15 24-Hour ECG recordings (n = 5 Healthy, n = 5 CHF, n = 5 AF), calculate the average HR every minute, downsample to every 5 minutes to mimic gold-standard Fitbit/Oura data. Then we calculate standard and time series metrics, compare them between groups (either including AF as healthy or excluding AF), and display results (t-tests, Wilcoxon Rank Sum ), box-plots, PCA
+
 ```{r}
 
 
@@ -121,9 +125,9 @@ data_holter_downsampled <- data_holter_minute %>%
 
 ```
 
-# Features
+# Features Original -- Look back we have some more
 
-```{r}
+```{r, eval = FALSE}
 
 library(dplyr)
 library(pracma)
@@ -381,25 +385,19 @@ library(purrr)
 library(broom)
 library(ggplot2)
 
-#--------------------------------------------------------------------
-# EXAMPLE DATA
-#--------------------------------------------------------------------
-# Suppose your data looks like this:
-# df_metrics <- data.frame(
-#   id        = c("a1nn", "a2nn", "a3nn", "b1nn", "b2nn", "b3nn"),
-#   status    = c("Healthy", "Healthy", "Healthy", "Unhealthy", "Unhealthy", "Unhealthy"),
-#   condition = c("AF", "SR", "AF", "SR", "AF", "VB"),
-#   mean_hr   = rnorm(6, 70, 5),
-#   sdnn      = rnorm(6, 50, 5),
-#   rmssd     = rnorm(6, 40, 5)
-# )
-#
-# In your case, read or construct the real data frame similarly.
 
-df_metrics <- data_holter_downsampled_metrics  # <-- Replace with your actual data
+# All subjects
 df_metrics <- final_results
-df_metrics <- avg_hr_results %>% 
-  filter(condition != "AF")
+
+# # only CHF and Healthy (no AF)
+# df_metrics <- avg_hr_results %>% 
+#   filter(condition != "AF")
+# 
+# # All subjects, only selected metrics
+df_metrics <- final_results %>%
+  select(c("id", "condition", "status", "avg_hr_DN_HistogramMode_5", "avg_hr_cv", "avg_hr_SB_BinaryStats_diff_longstretch0",
+                     "avg_hr_PD_PeriodicityWang_th0_01", "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi",
+                     "avg_hr_CO_FirstMin_ac"))
 
 #--------------------------------------------------------------------
 # 1. Pivot longer so each metric is in a single column
@@ -465,7 +463,10 @@ df_status_tests <- df_long %>%
 df_status_tests
 
 df_status_tests %>% 
-  arrange(p.value)
+  arrange(p.value) %>% 
+  knitr::kable()
+
+
 # -> This will create a data frame with columns: metric, test, estimate, statistic, p.value, conf.low, conf.high, etc.
 
 # B. Boxplot for each metric by status
@@ -499,7 +500,8 @@ df_condition_tests <- df_long %>%
   ungroup()
 
 df_condition_tests %>% 
-  arrange(p.value)
+  arrange(p.value) %>% 
+  knitr::kable()
 # -> Similar structure: columns for metric, test, statistic, p.value, etc.
 
 # If ANOVA is significant, you might do pairwise t-tests with corrections:
@@ -575,7 +577,7 @@ var_explained_pc <- round(var_explained * 100, 2)  # in percent
 # pca_res$rotation is a matrix of loadings, rows=variables, cols=PCs
 loadings_df <- as.data.frame(pca_res$rotation) %>%
   # Keep only the first 7 PCs (if there are at least 7)
-  select(PC1, PC2, PC3, PC4, PC5, PC6, PC7) %>%
+  select(PC1, PC2, PC3, PC4, PC5, PC6) %>% #, PC7) %>%
   rownames_to_column(var = "variable") %>%
   pivot_longer(
     cols = starts_with("PC"),
@@ -598,7 +600,7 @@ ggplot(loadings_df, aes(x = PC, y = variable, fill = loading)) +
   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
   scale_x_discrete(labels = pc_lut) +
   labs(
-    title = "Variable Loadings on First 7 PCs",
+    title = "Variable Loadings on First 6 PCs",
     x = "Principal Component",
     y = "Variable",
     fill = "Loading"
@@ -870,14 +872,29 @@ for (i in seq_along(plot_list)) {
   combined_plots[[i]] <- create_combined_plot(plot_list[[i]], text_list[[i]], i)
 }
 
-# Layout all plots in a grid with absolutely minimal spacing
+# Create a title grob
+title_grob <- textGrob("Downsampled 24-Hour Holter to 5 Minute Heart Rate ", gp=gpar(fontsize=16, fontface="bold"))
+footnote_grob <- textGrob("Dataset: Physionet Heart Chaos Competition (Healthy (n=5); CHF = CHF (n=5))", gp=gpar(fontsize=14, fontface="italic"), just="left", x=unit(0.01, "npc"))
+
+
 grid_plot <- arrangeGrob(
   grobs = combined_plots,
   ncol = n_cols,
-  padding = unit(0, "line"),  # No padding at all between panels
+  padding = unit(0, "line"),
   widths = unit(rep(1, n_cols), "null"),
-  heights = unit(rep(1, ceiling(n_plots/n_cols)), "null")
+  heights = unit(rep(1, ceiling(n_plots/n_cols)), "null"),
+  top = title_grob,
+  bottom = footnote_grob
 )
+
+# Layout all plots in a grid with absolutely minimal spacing
+# grid_plot <- arrangeGrob(
+#   grobs = combined_plots,
+#   ncol = n_cols,
+#   padding = unit(0, "line"),  # No padding at all between panels
+#   widths = unit(rep(1, n_cols), "null"),
+#   heights = unit(rep(1, ceiling(n_plots/n_cols)), "null")
+# )
 
 # Display the plot
 grid.newpage()
@@ -887,6 +904,222 @@ grid.draw(grid_plot)
 # ggsave("metric_comparisons.png", grid_plot, 
 #        width = min(n_cols * 3.5, 12),  # Reduced width
 #        height = min(n_rows * 3.5, 12),  # Reduced height
+#        dpi = 300)
+
+```
+# All 3
+```{r}
+
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+library(gridExtra)
+
+# Create a plot for each metric
+create_plot <- function(metric_name, custom_title = NULL) {
+  # Filter data for the specific metric
+  plot_data <- df_long %>% filter(metric == metric_name)
+  
+  # Get the unique condition groups - now using condition instead of status
+  condition_groups <- unique(plot_data$condition)
+  
+  # Calculate means for each group
+  means <- plot_data %>% 
+    group_by(condition) %>% 
+    summarize(mean_value = mean(value, na.rm = TRUE))
+  
+  # Perform statistical tests
+  # For parametric test (ANOVA)
+  aov_result <- aov(value ~ condition, data = plot_data)
+  aov_summary <- summary(aov_result)
+  aov_p <- aov_summary[[1]]["Pr(>F)"][1,1]
+  aov_f <- aov_summary[[1]]["F value"][1,1]
+
+  # For non-parametric test (Kruskal-Wallis)
+  kw_result <- kruskal.test(value ~ condition, data = plot_data)
+  kw_p <- kw_result$p.value
+  kw_stat <- kw_result$statistic
+  
+  # Format the results for display
+  aov_text <- paste0("ANOVA: F=", round(aov_f, 2), ", p=", formatC(aov_p, format = "f", digits = 4))
+  kw_text <- paste0("Kruskal-Wallis: χ²=", round(kw_stat, 1), ", p=", formatC(kw_p, format = "f", digits = 4))
+  
+  # Determine y-axis limits
+  y_min <- min(plot_data$value, na.rm = TRUE)
+  y_max <- max(plot_data$value, na.rm = TRUE)
+  y_range <- y_max - y_min
+  y_padding <- y_range * 0.1  # Just a little padding for the plot
+  
+  # Use custom title if provided, otherwise use metric name
+  plot_title <- ifelse(!is.null(custom_title), custom_title, metric_name)
+  
+  # Add significance markers based on p-value
+  p_mark <- ""
+  if (aov_p < 0.05 || kw_p < 0.05) {
+    p_mark <- "*"
+  }
+  
+  # Create the base plot with condition instead of status
+  p <- ggplot(plot_data, aes(x = condition, y = value, fill = condition)) +
+    geom_boxplot(alpha = 0.7, outlier.size = 2) +
+    # Add mean points with labels
+    geom_point(data = means, aes(y = mean_value), shape = 18, size = 4, color = "black") +
+    geom_text(data = means, aes(y = mean_value, label = round(mean_value, 1)), 
+              vjust = -1.5, color = "black", size = 3.5) +
+    # Set custom colors for three groups
+    scale_fill_manual(values = c("Healthy" = "#7FCDBB", "CHF" = "#F8AFA8", "AF" = "#BFA9DF")) +
+    # Add significance marker at top if applicable
+    annotate("text", x = length(condition_groups)/2, y = y_max + (y_padding * 0.8), 
+             label = p_mark, size = 8, hjust = 0.5) +
+    labs(
+      title = plot_title,
+      x = NULL,  # Remove x-axis label as it's redundant
+      y = "Value"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+      axis.title.y = element_text(size = 11, margin = margin(r = 10)),
+      axis.text = element_text(size = 10),
+      legend.position = "none",
+      panel.grid.minor = element_blank(),
+      plot.margin = margin(b = 0, t = 5, r = 5, l = 5)  # Minimal bottom margin
+    ) +
+    coord_cartesian(ylim = c(y_min - y_padding, y_max + y_padding * 1.1), clip = "off")
+  
+  # Calculate group means for display
+  group_means <- paste0("(")
+  for (i in seq_along(condition_groups)) {
+    group <- condition_groups[i]
+    mean_val <- round(means$mean_value[means$condition == group], 1)
+    group_means <- paste0(group_means, group, ": ", mean_val)
+    if (i < length(condition_groups)) {
+      group_means <- paste0(group_means, ", ")
+    }
+  }
+  group_means <- paste0(group_means, ")")
+  
+  # Return the plot and annotation text for below
+  return(list(
+    plot = p,
+    text = list(
+      anova = aov_text,
+      kruskal = kw_text,
+      comparison = group_means
+    )
+  ))
+}
+
+# Custom titles mapping - you can modify these titles
+metric_titles <- list(
+  "avg_hr_DN_HistogramMode_5" = "HR Histogram Mode (5 Bins)",
+  "avg_hr_cv" = "HR Coefficient of Variation",
+  "avg_hr_SB_BinaryStats_diff_longstretch0" = "HR Longest Consecutive Decrease",
+  "avg_hr_PD_PeriodicityWang_th0_01" = "HR Periodicity Index (Wang)",
+  "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi" = "HR Auto Mutual Information",
+  "avg_hr_CO_FirstMin_ac" = "HR First Autocorrelation Minimum"
+)
+
+# Comment out automatic metric detection and use the specified list
+# metrics_to_plot <- unique(df_long$metric)
+metrics_to_plot <- c("avg_hr_DN_HistogramMode_5", "avg_hr_cv", "avg_hr_SB_BinaryStats_diff_longstretch0", 
+                     "avg_hr_PD_PeriodicityWang_th0_01", "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi", 
+                     "avg_hr_CO_FirstMin_ac")
+
+plot_list <- list()
+text_list <- list()
+
+# Create plots with custom titles where available
+for (i in seq_along(metrics_to_plot)) {
+  metric <- metrics_to_plot[i]
+  custom_title <- NULL
+  
+  # Use custom title if available
+  if (metric %in% names(metric_titles)) {
+    custom_title <- metric_titles[[metric]]
+  }
+  
+  result <- create_plot(metric, custom_title)
+  plot_list[[i]] <- result$plot
+  text_list[[i]] <- result$text
+}
+
+# Determine a reasonable grid layout based on the number of plots
+n_plots <- length(plot_list)
+n_cols <- min(3, n_plots)  # Maximum 3 columns
+n_rows <- ceiling(n_plots / n_cols)
+
+# Create a combined plot with text below each graph
+library(grid)
+library(gridExtra)
+
+# Function to create a combined plot with text placed immediately below the graph
+create_combined_plot <- function(plot_obj, text_obj, plot_index) {
+  # Create text grob with all information
+  text_lines <- c()
+  
+  if (!is.null(text_obj$anova)) {
+    text_lines <- c(text_lines, text_obj$anova)
+  }
+  
+  if (!is.null(text_obj$kruskal)) {
+    text_lines <- c(text_lines, text_obj$kruskal)
+  }
+  
+  if (!is.null(text_obj$comparison)) {
+    text_lines <- c(text_lines, text_obj$comparison)
+  }
+  
+  # Join text lines
+  text_content <- paste(text_lines, collapse = "\n")
+  
+  # Create a text grob with larger font size and minimal margins
+  text_grob <- textGrob(
+    text_content,
+    gp = gpar(fontsize = 11),
+    just = "center",
+    vp = viewport(height = unit(0.9, "npc"))  # Reduces internal padding
+  )
+  
+  # Arrange plot and text with minimal space between
+  combined <- arrangeGrob(
+    plot_obj,
+    text_grob,
+    heights = c(3.5, 1.5),  # Adjusted ratio to accommodate more text
+    padding = unit(0, "line")  # No padding
+  )
+  
+  return(combined)
+}
+
+# Create combined plots
+combined_plots <- list()
+for (i in seq_along(plot_list)) {
+  combined_plots[[i]] <- create_combined_plot(plot_list[[i]], text_list[[i]], i)
+}
+
+# Create a title grob
+title_grob <- textGrob("Downsampled 24-Hour Holter to 5 Minute Heart Rate", gp=gpar(fontsize=16, fontface="bold"))
+footnote_grob <- textGrob("Dataset: Physionet Heart Chaos Competition (Healthy (n=5); CHF (n=5); AF (n=5))", gp=gpar(fontsize=14, fontface="italic"), just="left", x=unit(0.01, "npc"))
+
+grid_plot <- arrangeGrob(
+  grobs = combined_plots,
+  ncol = n_cols,
+  padding = unit(0, "line"),
+  widths = unit(rep(1, n_cols), "null"),
+  heights = unit(rep(1, ceiling(n_plots/n_cols)), "null"),
+  top = title_grob,
+  bottom = footnote_grob
+)
+
+# Display the plot
+grid.newpage()
+grid.draw(grid_plot)
+
+# Save the plot with appropriate dimensions (uncomment to use)
+# ggsave("heart_rate_metrics_comparison.png", grid_plot, 
+#        width = min(n_cols * 4, 12),  # Limit max width
+#        height = min(n_rows * 4.5, 14),  # Adjusted height for more text
 #        dpi = 300)
 
 ```

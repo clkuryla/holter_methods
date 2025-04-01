@@ -1,5 +1,5 @@
 ---
-title: "Holter Physionet EDA"
+title: "Holter Physionet First Try"
 author: "Christine Lucille Kuryla"
 date: "2025-03-27"
 output: html_document
@@ -281,19 +281,22 @@ data_holter_downsampled_metrics <- data_holter_downsampled %>%
 
 ```
 
-# Calculate metrics, include catch 22
+# Calculate metrics for each separately, include catch 22, coeff of var, and permutation entropy
+
+I stil need to add a few more here.
 
 ```{r}
 
 library(Rcatch22)
 library(pracma)
+library(statcomp)
 
 # Function to calculate all metrics for a single variable
 calculate_metrics <- function(data_vector) {
   catch22_all(data = data_vector, catch24 = TRUE) %>% 
     bind_rows(
       tibble(
-        names = c("mean", "sd", "max", "min", "cv", "iqr", "median", "apen", "sampen"),
+        names = c("mean", "sd", "max", "min", "cv", "iqr", "median", "apen", "sampen", "permen"), # "permenq", "permenrenyi"),
         values = c(
           mean(data_vector, na.rm = TRUE),
           sd(data_vector, na.rm = TRUE),
@@ -303,8 +306,13 @@ calculate_metrics <- function(data_vector) {
           sd(data_vector, na.rm = TRUE) / mean(data_vector, na.rm = TRUE),
           IQR(data_vector, na.rm = TRUE),
           median(data_vector, na.rm = TRUE),
-          approx_entropy(data_vector, edim = 2, r = 0.2 * sd(data_vector, na.rm = TRUE)),
-          sample_entropy(data_vector, edim = 2, r = 0.2 * sd(data_vector, na.rm = TRUE))
+          pracma::approx_entropy(data_vector, edim = 2, r = 0.2 * sd(data_vector, na.rm = TRUE)),
+          pracma::sample_entropy(data_vector, edim = 2, r = 0.2 * sd(data_vector, na.rm = TRUE)),
+          statcomp::permutation_entropy(data_vector)#, #permutation entropy
+       #   statcomp::permutation_entropy_qlog(data_vector, q = 1.2), #This is a generalization of permutation entropy using the q-logarithm from non-extensive statistical mechanics: When q=1, it reduces to standard permutation entropy, When q<1, it emphasizes rare patterns, When q>1, it emphasizes common patterns
+       #   statcomp::permutation_entropy_Renyi(data_vector, alpha = 2) #, #When α=1, it's equivalent to standard permutation entropy, Lower α values give more weight to rare patterns, Higher α values focus on dominant patterns
+       #   statcomp::global_complexity(data_vector),
+      #    statcomp::Abbe(data_vector)
         )
       )
     )
@@ -397,7 +405,9 @@ df_metrics <- final_results
 df_metrics <- final_results %>%
   select(c("id", "condition", "status", "avg_hr_DN_HistogramMode_5", "avg_hr_cv", "avg_hr_SB_BinaryStats_diff_longstretch0",
                      "avg_hr_PD_PeriodicityWang_th0_01", "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi",
-                     "avg_hr_CO_FirstMin_ac"))
+                     "avg_hr_CO_FirstMin_ac", "avg_hr_permen"))
+# df_metrics <- data_holter_minute_metrics
+df_metrics <- avg_hr_results
 
 #--------------------------------------------------------------------
 # 1. Pivot longer so each metric is in a single column
@@ -523,7 +533,19 @@ ggplot(df_long, aes(x = condition, y = value)) +
 # - Make sure the assumptions of the tests (normality, variance homogeneity) are reasonably met
 #   or that the nonparametric alternatives are used.
 
+# If you want to filter for PCA and visualizations
 
+promising_metrics <- df_condition_tests %>%
+  arrange(p.value) %>%
+  filter(p.value < 0.05) %>%
+  pull(metric) %>%
+  unique()
+
+df_metrics_selected <- df_metrics %>%
+  select(id, condition, status, promising_metrics)
+
+df_metrics_orig <- df_metrics
+df_metrics <- df_metrics_selected
 
 ```
 
@@ -623,17 +645,21 @@ scores <- as.data.frame(pca_res$x)
 scores <- cbind(scores, df_metrics %>% select(id, status, condition))
 
 # Axis labels with variance explained
-pc1_lab <- paste0("PC1 (", var_explained_pc[1], "%)")
-pc2_lab <- paste0("PC2 (", var_explained_pc[2], "%)")
+pc1_lab <- paste0("PC 1 (", var_explained_pc[1], "%)")
+pc2_lab <- paste0("PC 2 (", var_explained_pc[2], "%)")
 
 ggplot(scores, aes(x = PC1, y = PC2,
-                   color = condition, shape = status)) +
+                   color = condition)) +#, shape = status)) +
   geom_point(size = 2) +
   labs(
-    title = "PC1 vs PC2",
+    title = "PCA of Exploratory Heart Rate Metrics",
+    #title = "PC1 vs PC2",
     x = pc1_lab,
-    y = pc2_lab
+    y = pc2_lab,
+    color = "Condition"
   ) +
+#  scale_color_manual(values = c("#F8AFA8", "#BFA9DF", "darkgrey")) +
+  scale_color_manual(values = c("Normal" = "#7FCDBB", "CHF" = "#F8AFA8", "AF" = "#BFA9DF")) +
   theme_minimal()
 
 
@@ -880,7 +906,7 @@ footnote_grob <- textGrob("Dataset: Physionet Heart Chaos Competition (Healthy (
 grid_plot <- arrangeGrob(
   grobs = combined_plots,
   ncol = n_cols,
-  padding = unit(0, "line"),
+  padding = unit(0.5, "line"),
   widths = unit(rep(1, n_cols), "null"),
   heights = unit(rep(1, ceiling(n_plots/n_cols)), "null"),
   top = title_grob,
@@ -967,7 +993,7 @@ create_plot <- function(metric_name, custom_title = NULL) {
     geom_text(data = means, aes(y = mean_value, label = round(mean_value, 1)), 
               vjust = -1.5, color = "black", size = 3.5) +
     # Set custom colors for three groups
-    scale_fill_manual(values = c("Healthy" = "#7FCDBB", "CHF" = "#F8AFA8", "AF" = "#BFA9DF")) +
+    scale_fill_manual(values = c("Normal" = "#7FCDBB", "CHF" = "#F8AFA8", "AF" = "#BFA9DF")) +
     # Add significance marker at top if applicable
     annotate("text", x = length(condition_groups)/2, y = y_max + (y_padding * 0.8), 
              label = p_mark, size = 8, hjust = 0.5) +
@@ -1017,14 +1043,16 @@ metric_titles <- list(
   "avg_hr_SB_BinaryStats_diff_longstretch0" = "HR Longest Consecutive Decrease",
   "avg_hr_PD_PeriodicityWang_th0_01" = "HR Periodicity Index (Wang)",
   "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi" = "HR Auto Mutual Information",
-  "avg_hr_CO_FirstMin_ac" = "HR First Autocorrelation Minimum"
+  "avg_hr_CO_FirstMin_ac" = "HR First Autocorrelation Minimum",
+  "avg_hr_permen" = "Permutation Entropy"
 )
 
 # Comment out automatic metric detection and use the specified list
 # metrics_to_plot <- unique(df_long$metric)
 metrics_to_plot <- c("avg_hr_DN_HistogramMode_5", "avg_hr_cv", "avg_hr_SB_BinaryStats_diff_longstretch0", 
                      "avg_hr_PD_PeriodicityWang_th0_01", "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi", 
-                     "avg_hr_CO_FirstMin_ac")
+                     "avg_hr_CO_FirstMin_ac",
+                     "avg_hr_permen")
 
 plot_list <- list()
 text_list <- list()
@@ -1100,12 +1128,12 @@ for (i in seq_along(plot_list)) {
 
 # Create a title grob
 title_grob <- textGrob("Downsampled 24-Hour Holter to 5 Minute Heart Rate", gp=gpar(fontsize=16, fontface="bold"))
-footnote_grob <- textGrob("Dataset: Physionet Heart Chaos Competition (Healthy (n=5); CHF (n=5); AF (n=5))", gp=gpar(fontsize=14, fontface="italic"), just="left", x=unit(0.01, "npc"))
+footnote_grob <- textGrob("Dataset: Physionet Heart Chaos Competition (Healthy (n=5); CHF (n=5); AF (n=5))", gp=gpar(fontsize=12, fontface="italic"), just="left", x=unit(0.1, "npc"))
 
 grid_plot <- arrangeGrob(
   grobs = combined_plots,
   ncol = n_cols,
-  padding = unit(0, "line"),
+  padding = unit(0.5, "line"),
   widths = unit(rep(1, n_cols), "null"),
   heights = unit(rep(1, ceiling(n_plots/n_cols)), "null"),
   top = title_grob,

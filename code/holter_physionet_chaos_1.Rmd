@@ -71,8 +71,8 @@ combined_df <- combined_df %>%
   ) %>% 
   mutate(
     status = case_when(
-      condition %in% c("AF", "Normal") ~ "Healthy",
-      condition == "CHF" ~ "CHF",
+      condition %in% c("Normal") ~ "Healthy",
+      condition %in% c("AF", "CHF") ~ "Unhealthy",
       TRUE ~ "Unknown"  # or another default if desired
     )
   )
@@ -318,6 +318,9 @@ calculate_metrics <- function(data_vector) {
     )
 }
 
+
+
+
 # Process data for all three metrics: avg_hr, sdnn, and rmssd
 results <- data_holter_downsampled %>%
   mutate(avg_hr = mean_hr) %>% 
@@ -396,18 +399,19 @@ library(ggplot2)
 
 # All subjects
 df_metrics <- final_results
+#df_metrics <- data_holter_downsampled_metrics
 
 # # only CHF and Healthy (no AF)
 # df_metrics <- avg_hr_results %>% 
 #   filter(condition != "AF")
 # 
 # # All subjects, only selected metrics
-df_metrics <- final_results %>%
+df_metrics <- avg_hr_results %>%
   select(c("id", "condition", "status", "avg_hr_DN_HistogramMode_5", "avg_hr_cv", "avg_hr_SB_BinaryStats_diff_longstretch0",
                      "avg_hr_PD_PeriodicityWang_th0_01", "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi",
                      "avg_hr_CO_FirstMin_ac", "avg_hr_permen"))
 # df_metrics <- data_holter_minute_metrics
-df_metrics <- avg_hr_results
+# df_metrics <- avg_hr_results
 
 #--------------------------------------------------------------------
 # 1. Pivot longer so each metric is in a single column
@@ -446,45 +450,45 @@ df_long <- df_metrics %>%
 #    If data are large, Shapiro test may be too sensitive – you might rely on a
 #    distribution plot or Q-Q plot. For simplicity, let's skip that step or do it
 #    in a quick approach:
-
-df_status_tests <- df_long %>%
-  group_by(metric) %>%
-  group_modify(~ {
-    # .x is the data for each metric
-    # We'll do a t-test by default; if you want to switch to Wilcoxon based on
-    # normality, you can do that here. This example always runs both for illustration.
-
-    data_for_metric <- .x
-
-    # T-test
-    ttest_res <- t.test(value ~ status, data = data_for_metric)
-    ttest_tidy <- tidy(ttest_res) %>%
-      mutate(test = "t-test")
-
-    # Wilcoxon
-    wilcox_res <- wilcox.test(value ~ status, data = data_for_metric)
-    wilcox_tidy <- tidy(wilcox_res) %>%
-      mutate(test = "wilcoxon-rank-sum")
-
-    bind_rows(ttest_tidy, wilcox_tidy)
-  }) %>%
-  ungroup()
-
-df_status_tests
-
-df_status_tests %>% 
-  arrange(p.value) %>% 
-  knitr::kable()
+# 
+# df_status_tests <- df_long %>%
+#   group_by(metric) %>%
+#   group_modify(~ {
+#     # .x is the data for each metric
+#     # We'll do a t-test by default; if you want to switch to Wilcoxon based on
+#     # normality, you can do that here. This example always runs both for illustration.
+# 
+#     data_for_metric <- .x
+# 
+#     # T-test
+#     ttest_res <- t.test(value ~ status, data = data_for_metric)
+#     ttest_tidy <- tidy(ttest_res) %>%
+#       mutate(test = "t-test")
+# 
+#     # Wilcoxon
+#     wilcox_res <- wilcox.test(value ~ status, data = data_for_metric)
+#     wilcox_tidy <- tidy(wilcox_res) %>%
+#       mutate(test = "wilcoxon-rank-sum")
+# 
+#     bind_rows(ttest_tidy, wilcox_tidy)
+#   }) %>%
+#   ungroup()
+# 
+# df_status_tests
+# 
+# df_status_tests %>% 
+#   arrange(p.value) %>% 
+#   knitr::kable()
 
 
 # -> This will create a data frame with columns: metric, test, estimate, statistic, p.value, conf.low, conf.high, etc.
 
 # B. Boxplot for each metric by status
-ggplot(df_long, aes(x = status, y = value)) +
-  geom_boxplot() +
-  facet_wrap(~ metric, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Boxplots of Each Metric by Status")
+# ggplot(df_long, aes(x = status, y = value)) +
+#   geom_boxplot() +
+#   facet_wrap(~ metric, scales = "free_y") +
+#   theme_minimal() +
+#   labs(title = "Boxplots of Each Metric by Status")
 
 #--------------------------------------------------------------------
 # 3. Compare three groups (condition) with ANOVA or Kruskal–Wallis
@@ -535,17 +539,17 @@ ggplot(df_long, aes(x = condition, y = value)) +
 
 # If you want to filter for PCA and visualizations
 
-promising_metrics <- df_condition_tests %>%
-  arrange(p.value) %>%
-  filter(p.value < 0.05) %>%
-  pull(metric) %>%
-  unique()
+# promising_metrics <- df_condition_tests %>%
+#   arrange(p.value) %>%
+#   filter(p.value < 0.05) %>%
+#   pull(metric) %>%
+#   unique()
 
 df_metrics_selected <- df_metrics %>%
   select(id, condition, status, promising_metrics)
 
-df_metrics_orig <- df_metrics
-df_metrics <- df_metrics_selected
+# df_metrics_orig <- df_metrics
+# df_metrics <- df_metrics_selected
 
 ```
 
@@ -619,8 +623,9 @@ pc_lut <- setNames(pc_labels, paste0("PC", 1:7))
 # Heatmap
 ggplot(loadings_df, aes(x = PC, y = variable, fill = loading)) +
   geom_tile() +
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred", midpoint = 0) +
   scale_x_discrete(labels = pc_lut) +
+  geom_text(aes(label = round(loading, 2)), size = 3) +
   labs(
     title = "Variable Loadings on First 6 PCs",
     x = "Principal Component",
@@ -650,16 +655,19 @@ pc2_lab <- paste0("PC 2 (", var_explained_pc[2], "%)")
 
 ggplot(scores, aes(x = PC1, y = PC2,
                    color = condition)) +#, shape = status)) +
-  geom_point(size = 2) +
+  geom_point(size = 3) +
   labs(
-    title = "PCA of Exploratory Heart Rate Metrics",
+    title = "PCA of Heart Rate Time Series Metrics",
     #title = "PC1 vs PC2",
     x = pc1_lab,
     y = pc2_lab,
     color = "Condition"
   ) +
+  scale_color_manual(values = c("Normal" = "darkorange1", "CHF" = "green4", "AF" = "royalblue3")) +
+#  scale_fill_manual(values = c("Normal" = "orange", "CHF" = "palegreen3", "AF" = "skyblue2")) +
+#+scale_color_manual(values = c("Normal" = "chartreuse3", "CHF" = "mediumvioletred", "AF" = "cornflowerblue")) +
 #  scale_color_manual(values = c("#F8AFA8", "#BFA9DF", "darkgrey")) +
-  scale_color_manual(values = c("Normal" = "#7FCDBB", "CHF" = "#F8AFA8", "AF" = "#BFA9DF")) +
+#  scale_color_manual(values = c("Normal" = "chartreuse3", "CHF" = "mediumvioletred", "AF" = "cornflowerblue")) +
   theme_minimal()
 
 
@@ -993,7 +1001,7 @@ create_plot <- function(metric_name, custom_title = NULL) {
     geom_text(data = means, aes(y = mean_value, label = round(mean_value, 1)), 
               vjust = -1.5, color = "black", size = 3.5) +
     # Set custom colors for three groups
-    scale_fill_manual(values = c("Normal" = "#7FCDBB", "CHF" = "#F8AFA8", "AF" = "#BFA9DF")) +
+    scale_fill_manual(values = c("Normal" = "darkolivegreen2", "CHF" = "plum2", "AF" = "skyblue2")) +
     # Add significance marker at top if applicable
     annotate("text", x = length(condition_groups)/2, y = y_max + (y_padding * 0.8), 
              label = p_mark, size = 8, hjust = 0.5) +
@@ -1149,6 +1157,179 @@ grid.draw(grid_plot)
 #        width = min(n_cols * 4, 12),  # Limit max width
 #        height = min(n_rows * 4.5, 14),  # Adjusted height for more text
 #        dpi = 300)
+
+```
+
+# Simpler
+
+```{r}
+
+# Create a simplified plot for each metric
+create_plot_simple <- function(metric_name, custom_title = NULL) {
+  # Filter data for the specific metric
+  plot_data <- df_long %>% filter(metric == metric_name)
+  
+  # Get the unique condition groups
+  condition_groups <- unique(plot_data$condition)
+  
+  # Calculate means for each group
+  means <- plot_data %>% 
+    group_by(condition) %>% 
+    summarize(mean_value = mean(value, na.rm = TRUE))
+  
+  # Determine y-axis limits
+  y_min <- min(plot_data$value, na.rm = TRUE)
+  y_max <- max(plot_data$value, na.rm = TRUE)
+  y_range <- y_max - y_min
+  y_padding <- y_range * 0.1  # Just a little padding for the plot
+  
+  # Use custom title if provided, otherwise use metric name
+  plot_title <- ifelse(!is.null(custom_title), custom_title, metric_name)
+  
+  # Create the base plot with condition
+  p <- ggplot(plot_data, aes(x = condition, y = value, fill = condition)) +
+    geom_boxplot(alpha = 0.7, outlier.size = 2) +
+    # Add mean points with labels
+    geom_point(data = means, aes(y = mean_value), shape = 18, size = 4, color = "black") +
+    geom_text(data = means, aes(y = mean_value, label = round(mean_value, 1)), 
+              vjust = -1.5, color = "black", size = 3.5) +
+    # Set custom colors for three groups
+ #   scale_fill_manual(values = c("Normal" = "darkolivegreen2", "CHF" = "plum2", "AF" = "skyblue2")) +
+  #  scale_fill_manual(values = c("Normal" = "orange", "CHF" = "palegreen3", "AF" = "skyblue2")) +
+    scale_fill_manual(values = c("Normal" = "darkorange1", "CHF" = "green4", "AF" = "royalblue3")) +
+    labs(
+      title = plot_title,
+      x = NULL,  # Remove x-axis label as it's redundant
+      y = "Value"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+      axis.title.y = element_text(size = 11, margin = margin(r = 10)),
+      axis.text = element_text(size = 10),
+      legend.position = "none",
+      panel.grid.minor = element_blank(),
+      plot.margin = margin(b = 5, t = 5, r = 5, l = 5)
+    ) +
+    coord_cartesian(ylim = c(y_min - y_padding, y_max + y_padding))
+  
+  # Return just the plot
+  return(p)
+}
+
+# Custom titles mapping - you can modify these titles
+metric_titles <- list(
+  "avg_hr_DN_HistogramMode_5" = "Histogram Mode (5 Bins)",
+  "avg_hr_cv" = "Coefficient of Variation",
+  "avg_hr_SB_BinaryStats_diff_longstretch0" = "Longest Consecutive Decrease",
+  "avg_hr_PD_PeriodicityWang_th0_01" = "Wang Periodicity Index",
+  "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi" = "Auto Mutual Information",
+  "avg_hr_CO_FirstMin_ac" = "First Autocorrelation Minimum",
+  "avg_hr_permen" = "Permutation Entropy"
+)
+
+# Use the specified metrics list
+metrics_to_plot <- c(#"avg_hr_DN_HistogramMode_5", 
+                    "avg_hr_PD_PeriodicityWang_th0_01", 
+                    "avg_hr_SB_BinaryStats_diff_longstretch0",
+                     "avg_hr_cv",
+                    "avg_hr_permen",
+                     "avg_hr_CO_FirstMin_ac",
+                "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi")
+
+# Create individual plots
+plot_list <- list()
+
+# Create plots with custom titles where available
+for (i in seq_along(metrics_to_plot)) {
+  metric <- metrics_to_plot[i]
+  custom_title <- NULL
+  
+  # Use custom title if available
+  if (metric %in% names(metric_titles)) {
+    custom_title <- metric_titles[[metric]]
+  }
+  
+  plot_list[[i]] <- create_plot_simple(metric, custom_title)
+}
+
+# Determine a reasonable grid layout
+n_plots <- length(plot_list)
+n_cols <- min(3, n_plots)  # Maximum 3 columns
+n_rows <- ceiling(n_plots / n_cols)
+
+# Create a title grob
+title_grob <- textGrob("Downsampled 24-Hour Holter to 5 Minute Heart Rate", gp=gpar(fontsize=16, fontface="bold"))
+footnote_grob <- textGrob("Dataset: Physionet Heart Chaos Competition (Healthy (n=5); CHF (n=5); AF (n=5))", gp=gpar(fontsize=12, fontface="italic"), just="left", x=unit(0.1, "npc"))
+
+# Create the combined plot
+grid_plot <- arrangeGrob(
+  grobs = plot_list,
+  ncol = n_cols,
+  padding = unit(0.5, "line"),
+  widths = unit(rep(1, n_cols), "null"),
+  heights = unit(rep(1, ceiling(n_plots/n_cols)), "null"),
+  top = title_grob#,
+ # bottom = footnote_grob
+)
+
+# Display the plot
+grid.newpage()
+grid.draw(grid_plot)
+
+# Alternatively, you can save it to a file
+# ggsave("heart_rate_metrics.png", grid_plot, width = 12, height = 10)
+
+```
+
+# Power Calc
+
+```{r}
+
+scores %>% 
+  group_by(status) %>% 
+  summarize(n = n(),
+            mean = mean(PC1),
+            sd = sd(PC1),
+            ) 
+
+
+#
+#  status        n   mean    sd
+#  <chr>     <int>  <dbl> <dbl>
+#1 Healthy       5  1.92  0.793
+#2 Unhealthy    10 -0.958 1.08 
+
+library(pwr)                       # base R package
+pwr::pwr.t2n.test(n1 = 202,             # healthy
+             n2 = 51,              # ESRD (smallest group)
+          #   d  = 1.198,             # effect size
+             power = 0.95,
+             alternative = "two.sided")
+
+install.packages("effsize")
+effsize::cohen.d(scores %>% filter(status == "Healthy") %>% pull(PC1),
+                 scores %>% filter(status == "Unhealthy") %>% pull(PC1),
+                 hedges.correction = TRUE
+                 )
+
+
+```
+
+```{r}
+
+data_holter_downsampled %>% 
+  filter(id == "n3nn") %>% 
+  mutate(hour = minute_index/60) %>% 
+  ggplot(aes(x = hour, y = mean_hr)) + 
+  labs(
+    x = "Hour",
+    y = "Mean Heart Rate",
+    title = "Heart Rate Every 5 Minutes"
+  ) +
+  geom_point() +
+  geom_line(alpha = 0.7) +
+  theme_minimal()
 
 ```
 

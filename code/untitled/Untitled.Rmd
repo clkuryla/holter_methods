@@ -1,0 +1,102 @@
+---
+title: "Diabetes Holter"
+author: "Christine Lucille Kuryla"
+date: "2025-03-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(tidyverse)
+```
+
+```{r}
+
+library(R.matlab)
+
+a <- readMat("../../../../Downloads/19072938.mat")
+
+library(RHRV)
+glimpse(a)
+head(t(a$RS)/1000)
+
+
+# Create HRV data object
+hrv_data <- CreateHRVData()
+
+# Convert RR intervals to a format RHRV can work with
+rr_intervals <- as.numeric(t(a$RS)/1000)  # Convert to seconds
+
+# Use BuildNIHR to build the heart rate series from RR intervals
+hrv_data$Beat$RR <- rr_intervals
+hrv_data$Beat$Time <- cumsum(rr_intervals)
+hrv_data$Beat$Time <- hrv_data$Beat$Time - hrv_data$Beat$Time[1]  # Start at time 0
+hrv_data <- BuildNIHR(hrv_data)
+
+# Now you can proceed with HRV analysis
+# For example:
+# hrv_data <- CreateTimeAnalysis(hrv_data)
+# hrv_data <- CreateFreqAnalysis(hrv_data)
+
+      hrv_data <- CreateHRVData()
+
+      # Load beat times - using absolute timestamps
+   #   hrv_data <- LoadBeatVector(hrv_data, t(a$RS))
+      hrv_data <- LoadBeatRR(hrv_data, as.numeric(t(a$RS)/1000))
+      
+      # Build and filter NIHR
+      hrv_data <- BuildNIHR(hrv_data)
+      hrv_data <- FilterNIHR(hrv_data)
+      
+      # Interpolate NIHR
+      hrv_data <- InterpolateNIHR(hrv_data, freqhr = 4)
+      
+      # Time analysis
+      hrv_data <- CreateTimeAnalysis(hrv_data)
+      
+      # Calculate average heart rate (60 / average IBI in seconds)
+      avg_hr <- 60 / mean(group_data$ibi, na.rm = TRUE)
+      
+      # Extract metrics
+      # First check if the metric is empty, if not, then continue and extract metric
+      sdnn <- ifelse(!is.null(hrv_data$TimeAnalysis) && length(hrv_data$TimeAnalysis) > 0, 
+                     hrv_data$TimeAnalysis[[1]]$SDNN, NA)
+      rmssd <- ifelse(!is.null(hrv_data$TimeAnalysis) && length(hrv_data$TimeAnalysis) > 0, 
+                      hrv_data$TimeAnalysis[[1]]$rMSSD, NA)
+      hrvi <- ifelse(!is.null(hrv_data$TimeAnalysis) && length(hrv_data$TimeAnalysis) > 0, 
+                     hrv_data$TimeAnalysis[[1]]$HRVi, NA)
+      
+
+      
+      
+      
+      
+      
+  # Create HRV data object
+hrv_data <- CreateHRVData()
+
+# Convert RR intervals and ensure proper structure
+rr_intervals <- as.numeric(t(a$RS)/1000)  # Convert to seconds
+
+# Manually build the Beat structure completely
+hrv_data$Beat$RR <- rr_intervals
+hrv_data$Beat$Time <- cumsum(c(0, rr_intervals[1:(length(rr_intervals)-1)]))  # Start at 0
+hrv_data$Beat$Index <- 1:length(rr_intervals)
+
+# Now build the NIHR data
+
+hrv_data <- BuildNIHR(hrv_data)
+hrv_data <- FilterNIHR(hrv_data)
+hrv_data <- InterpolateNIHR(hrv_data)
+  
+hrv_data <- CreateTimeAnalysis(hrv_data)
+hrv_data <- CreateFreqAnalysis(hrv_data)
+hrv_data <- CreateNonLinearAnalysis(hrv_data)
+
+hrv_data$TimeAnalysis
+hrv_data$FreqAnalysis[[1]]
+      
+      
+```
+

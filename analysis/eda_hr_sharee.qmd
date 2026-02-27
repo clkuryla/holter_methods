@@ -1,0 +1,365 @@
+---
+title: "EDA: SHAREE HR Time Series"
+subtitle: "Exploratory data analysis of 1-min and 5-min downsampled heart rate"
+date: today
+format:
+  gfm:
+    toc: true
+    toc-depth: 3
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 3
+    code-fold: true
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+## 1 Setup & Data Loading
+
+```{r setup}
+library(tidyverse)
+library(here)
+library(knitr)
+library(scales)
+
+theme_set(theme_minimal(base_size = 12))
+```
+
+```{r load-data}
+sharee_1min <- read_csv(here("data_processed/sharee_20251118/sharee_1min.csv"),
+                        show_col_types = FALSE)
+sharee_5min <- read_csv(here("data_processed/sharee_20251118/sharee_5min.csv"),
+                        show_col_types = FALSE)
+```
+
+```{r data-overview}
+cat("--- 1-minute data ---\n")
+cat("Dimensions:", nrow(sharee_1min), "rows x", ncol(sharee_1min), "cols\n")
+cat("Subjects:", n_distinct(sharee_1min$id), "\n\n")
+
+cat("--- 5-minute data ---\n")
+cat("Dimensions:", nrow(sharee_5min), "rows x", ncol(sharee_5min), "cols\n")
+cat("Subjects:", n_distinct(sharee_5min$id), "\n")
+```
+
+```{r glimpse}
+glimpse(sharee_1min)
+```
+
+## 2 Subject-Level Summary
+
+### Demographics
+
+```{r demographics}
+demo <- sharee_1min %>%
+  distinct(id, .keep_all = TRUE) %>%
+  select(id, Gender, Age, BMI, Smoker, SBP, DBP, Hypertension)
+
+demo %>%
+  summarise(
+    n = n(),
+    age_mean = mean(Age, na.rm = TRUE),
+    age_sd   = sd(Age, na.rm = TRUE),
+    bmi_mean = mean(BMI, na.rm = TRUE),
+    bmi_sd   = sd(BMI, na.rm = TRUE),
+    pct_male = mean(Gender == "M", na.rm = TRUE) * 100,
+    pct_smoker = mean(Smoker == "yes", na.rm = TRUE) * 100
+  ) %>%
+  kable(digits = 1, caption = "Overall demographics")
+```
+
+### Counts by Hypertension Category
+
+```{r htn-counts}
+demo %>%
+  count(Hypertension, name = "n_subjects") %>%
+  kable(caption = "Subjects by hypertension category")
+```
+
+### Recording Duration
+
+```{r recording-duration}
+dur <- sharee_1min %>%
+  group_by(id, Hypertension) %>%
+  summarise(
+    n_minutes   = n(),
+    n_valid_min = sum(!is.na(mean_hr)),
+    duration_hr = n_minutes / 60,
+    .groups = "drop"
+  )
+
+dur %>%
+  summarise(
+    n_subjects       = n(),
+    median_minutes   = median(n_minutes),
+    min_minutes      = min(n_minutes),
+    max_minutes      = max(n_minutes),
+    median_valid_min = median(n_valid_min)
+  ) %>%
+  kable(caption = "Recording duration summary")
+```
+
+## 3 Missing Data Audit
+
+```{r missing-per-subject}
+missing <- sharee_1min %>%
+  group_by(id, Hypertension) %>%
+  summarise(
+    n_total  = n(),
+    n_na     = sum(is.na(mean_hr)),
+    pct_na   = n_na / n_total * 100,
+    .groups  = "drop"
+  ) %>%
+  arrange(desc(pct_na))
+```
+
+```{r missing-summary}
+missing %>%
+  summarise(
+    subjects_any_missing   = sum(n_na > 0),
+    subjects_gt5pct        = sum(pct_na > 5),
+    subjects_gt20pct       = sum(pct_na > 20),
+    median_pct_missing     = median(pct_na),
+    max_pct_missing        = max(pct_na)
+  ) %>%
+  kable(digits = 1, caption = "Missing data summary (mean_hr NAs)")
+```
+
+```{r missing-bar, fig.width=10, fig.height=5}
+missing %>%
+  mutate(id = fct_reorder(factor(id), pct_na)) %>%
+  ggplot(aes(x = id, y = pct_na, fill = Hypertension)) +
+  geom_col() +
+  labs(title = "Percent missing HR per subject",
+       x = "Subject (sorted)", y = "% missing minutes") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+```
+
+## 4 Descriptive Statistics
+
+### Overall
+
+```{r overall-stats}
+sharee_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  summarise(
+    n_obs    = n(),
+    mean_hr  = mean(mean_hr),
+    sd_hr    = sd(mean_hr),
+    median_hr = median(mean_hr),
+    iqr_hr   = IQR(mean_hr),
+    min_hr   = min(mean_hr),
+    max_hr   = max(mean_hr)
+  ) %>%
+  kable(digits = 1, caption = "Overall HR descriptive statistics (1-min)")
+```
+
+### Per-Subject
+
+```{r per-subject-stats}
+subj_stats <- sharee_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  group_by(id, Hypertension) %>%
+  summarise(
+    mean_hr    = mean(mean_hr),
+    sd_hr      = sd(mean_hr),
+    min_hr     = min(mean_hr),
+    max_hr     = max(mean_hr),
+    n_valid    = n(),
+    .groups    = "drop"
+  )
+
+subj_stats %>%
+  head(20) %>%
+  kable(digits = 1, caption = "Per-subject stats (first 20)")
+```
+
+### By Hypertension Category
+
+```{r group-boxplot, fig.width=8, fig.height=5}
+subj_stats %>%
+  ggplot(aes(x = Hypertension, y = mean_hr, fill = Hypertension)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21) +
+  geom_jitter(width = 0.15, alpha = 0.4, size = 1.5) +
+  labs(title = "Mean HR by hypertension category",
+       y = "Subject mean HR (bpm)") +
+  theme(legend.position = "none")
+```
+
+### Sanity Checks
+
+```{r sanity-checks}
+flag_mean <- subj_stats %>% filter(mean_hr < 40 | mean_hr > 150)
+flag_short <- subj_stats %>% filter(n_valid < 720)
+flag_artifact <- sharee_1min %>% filter(!is.na(mean_hr), mean_hr < 20 | mean_hr > 250)
+
+cat("Subjects with mean HR outside [40, 150] bpm:", nrow(flag_mean), "\n")
+cat("Subjects with <12 hours valid data:", nrow(flag_short), "\n")
+cat("Individual minutes with HR outside [20, 250] bpm:", nrow(flag_artifact), "\n")
+```
+
+```{r flag-tables}
+if (nrow(flag_mean) > 0) {
+  cat("Flagged subjects (mean HR):\n")
+  flag_mean %>% select(id, Hypertension, mean_hr) %>% kable(digits = 1)
+}
+
+if (nrow(flag_short) > 0) {
+  cat("Flagged subjects (<12h valid):\n")
+  flag_short %>% select(id, Hypertension, n_valid, mean_hr) %>%
+    head(20) %>%
+    kable(digits = 1, caption = "Subjects with <12h valid data (first 20)")
+}
+```
+
+## 5 HR Time Series Plots (1-min)
+
+### Individual Traces (Sampled)
+
+```{r sample-subjects-1min, fig.width=12, fig.height=10}
+set.seed(42)
+
+sampled_ids <- sharee_1min %>%
+  distinct(id, Hypertension) %>%
+  group_by(Hypertension) %>%
+  slice_sample(n = 4) %>%
+  ungroup()
+
+sharee_1min %>%
+  semi_join(sampled_ids, by = "id") %>%
+  mutate(hours = minute_index / 60) %>%
+  ggplot(aes(x = hours, y = mean_hr, color = Hypertension)) +
+  geom_line(linewidth = 0.3) +
+  facet_wrap(~ id, ncol = 4, scales = "free_y") +
+  labs(title = "Sampled individual 24h HR traces (1-min)",
+       x = "Time (hours)", y = "HR (bpm)") +
+  theme(legend.position = "bottom")
+```
+
+### Spaghetti Plots by Group
+
+```{r spaghetti-1min, fig.width=12, fig.height=8}
+group_means_1min <- sharee_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  group_by(Hypertension, hours) %>%
+  summarise(group_mean = mean(mean_hr, na.rm = TRUE), .groups = "drop")
+
+sharee_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  ggplot(aes(x = hours, y = mean_hr, group = id)) +
+  geom_line(alpha = 0.15, linewidth = 0.2) +
+  geom_line(data = group_means_1min,
+            aes(x = hours, y = group_mean, group = 1),
+            color = "red", linewidth = 1) +
+  facet_wrap(~ Hypertension) +
+  labs(title = "All subjects overlaid with group mean (1-min, red = mean)",
+       x = "Time (hours)", y = "HR (bpm)")
+```
+
+## 6 HR Time Series Plots (5-min)
+
+### Individual Traces (Sampled)
+
+```{r sample-subjects-5min, fig.width=12, fig.height=10}
+set.seed(42)
+
+sampled_ids_5 <- sharee_5min %>%
+  distinct(id, Hypertension) %>%
+  group_by(Hypertension) %>%
+  slice_sample(n = 4) %>%
+  ungroup()
+
+sharee_5min %>%
+  semi_join(sampled_ids_5, by = "id") %>%
+  mutate(hours = minute_index / 60) %>%
+  ggplot(aes(x = hours, y = mean_hr, color = Hypertension)) +
+  geom_line(linewidth = 0.4) +
+  facet_wrap(~ id, ncol = 4, scales = "free_y") +
+  labs(title = "Sampled individual 24h HR traces (5-min)",
+       x = "Time (hours)", y = "HR (bpm)") +
+  theme(legend.position = "bottom")
+```
+
+### Spaghetti Plots by Group
+
+```{r spaghetti-5min, fig.width=12, fig.height=8}
+group_means_5min <- sharee_5min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  group_by(Hypertension, hours) %>%
+  summarise(group_mean = mean(mean_hr, na.rm = TRUE), .groups = "drop")
+
+sharee_5min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  ggplot(aes(x = hours, y = mean_hr, group = id)) +
+  geom_line(alpha = 0.15, linewidth = 0.2) +
+  geom_line(data = group_means_5min,
+            aes(x = hours, y = group_mean, group = 1),
+            color = "red", linewidth = 1) +
+  facet_wrap(~ Hypertension) +
+  labs(title = "All subjects overlaid with group mean (5-min, red = mean)",
+       x = "Time (hours)", y = "HR (bpm)")
+```
+
+## 7 Distribution Plots
+
+### Density of All HR Values (1-min)
+
+```{r density-1min, fig.width=10, fig.height=5}
+sharee_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  ggplot(aes(x = mean_hr, fill = Hypertension)) +
+  geom_density(alpha = 0.4) +
+  labs(title = "Density of 1-min HR values by hypertension category",
+       x = "HR (bpm)", y = "Density") +
+  scale_x_continuous(limits = c(30, 180))
+```
+
+### Per-Subject Boxplots (Sampled)
+
+```{r subject-boxplots, fig.width=12, fig.height=6}
+set.seed(42)
+boxplot_ids <- sharee_1min %>%
+  distinct(id, Hypertension) %>%
+  group_by(Hypertension) %>%
+  slice_sample(n = 6) %>%
+  ungroup()
+
+sharee_1min %>%
+  semi_join(boxplot_ids, by = "id") %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(id = factor(id)) %>%
+  ggplot(aes(x = id, y = mean_hr, fill = Hypertension)) +
+  geom_boxplot(outlier.size = 0.5) +
+  labs(title = "Per-subject HR distributions (sampled, 1-min)",
+       x = "Subject", y = "HR (bpm)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## 8 Full Subject Gallery
+
+Every subject's 1-min HR trace, faceted by ID and colored by hypertension category.
+
+```{r all-subjects-gallery, fig.width=20, fig.height=40}
+sharee_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  ggplot(aes(x = hours, y = mean_hr, color = Hypertension)) +
+  geom_line(linewidth = 0.2) +
+  facet_wrap(~ id, ncol = 10) +
+  labs(title = "All subjects — 24h HR traces (1-min)",
+       x = "Hours", y = "HR (bpm)") +
+  theme_minimal(base_size = 6) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(size = 5),
+    axis.text = element_text(size = 4),
+    panel.spacing = unit(0.2, "lines")
+  )
+```

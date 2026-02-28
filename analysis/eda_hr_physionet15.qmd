@@ -1,0 +1,321 @@
+---
+title: "EDA: PhysioNet CHAOS HR Time Series"
+subtitle: "Exploratory data analysis of 1-min and 5-min downsampled heart rate (AF, CHF, Normal)"
+date: today
+format:
+  gfm:
+    toc: true
+    toc-depth: 3
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 3
+    code-fold: true
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+## 1 Setup & Data Loading
+
+```{r setup}
+library(tidyverse)
+library(here)
+library(knitr)
+library(scales)
+
+theme_set(theme_minimal(base_size = 12))
+```
+
+```{r load-data}
+pn_1min <- read_csv(here("data_processed/physionet_15/physionet15_1min.csv"),
+                    show_col_types = FALSE)
+pn_5min <- read_csv(here("data_processed/physionet_15/physionet15_5min.csv"),
+                    show_col_types = FALSE)
+```
+
+```{r data-overview}
+cat("--- 1-minute data ---\n")
+cat("Dimensions:", nrow(pn_1min), "rows x", ncol(pn_1min), "cols\n")
+cat("Subjects:", n_distinct(pn_1min$id), "\n")
+cat("Conditions:", paste(unique(pn_1min$condition), collapse = ", "), "\n\n")
+
+cat("--- 5-minute data ---\n")
+cat("Dimensions:", nrow(pn_5min), "rows x", ncol(pn_5min), "cols\n")
+cat("Subjects:", n_distinct(pn_5min$id), "\n")
+```
+
+```{r glimpse}
+glimpse(pn_1min)
+```
+
+## 2 Subject-Level Summary
+
+### Counts by Condition
+
+```{r condition-counts}
+pn_1min %>%
+  distinct(id, condition, source_record) %>%
+  count(condition, name = "n_subjects") %>%
+  kable(caption = "Subjects by condition")
+```
+
+### Subject Inventory
+
+```{r subject-inventory}
+pn_1min %>%
+  distinct(id, condition, source_record) %>%
+  arrange(condition, id) %>%
+  kable(caption = "All subjects with source records")
+```
+
+### Recording Duration
+
+```{r recording-duration}
+dur <- pn_1min %>%
+  group_by(id, condition) %>%
+  summarise(
+    n_minutes   = n(),
+    n_valid_min = sum(!is.na(mean_hr)),
+    duration_hr = n_minutes / 60,
+    .groups = "drop"
+  )
+
+dur %>%
+  group_by(condition) %>%
+  summarise(
+    n_subjects       = n(),
+    median_minutes   = median(n_minutes),
+    min_minutes      = min(n_minutes),
+    max_minutes      = max(n_minutes),
+    median_valid_min = median(n_valid_min),
+    .groups = "drop"
+  ) %>%
+  kable(caption = "Recording duration by condition")
+```
+
+```{r duration-per-subject}
+dur %>%
+  arrange(condition, id) %>%
+  select(id, condition, n_minutes, n_valid_min, duration_hr) %>%
+  kable(digits = 1, caption = "Per-subject recording duration")
+```
+
+## 3 Missing Data Audit
+
+```{r missing-per-subject}
+missing <- pn_1min %>%
+  group_by(id, condition) %>%
+  summarise(
+    n_total = n(),
+    n_na    = sum(is.na(mean_hr)),
+    pct_na  = n_na / n_total * 100,
+    .groups = "drop"
+  ) %>%
+  arrange(desc(pct_na))
+```
+
+```{r missing-summary}
+missing %>%
+  summarise(
+    subjects_any_missing = sum(n_na > 0),
+    subjects_gt5pct      = sum(pct_na > 5),
+    subjects_gt20pct     = sum(pct_na > 20),
+    median_pct_missing   = median(pct_na),
+    max_pct_missing      = max(pct_na)
+  ) %>%
+  kable(digits = 1, caption = "Missing data summary (mean_hr NAs)")
+```
+
+```{r missing-bar, fig.width=8, fig.height=4}
+missing %>%
+  mutate(id = fct_reorder(factor(id), pct_na)) %>%
+  ggplot(aes(x = id, y = pct_na, fill = condition)) +
+  geom_col() +
+  labs(title = "Percent missing HR per subject",
+       x = "Subject", y = "% missing minutes") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## 4 Descriptive Statistics
+
+### Overall
+
+```{r overall-stats}
+pn_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  summarise(
+    n_obs     = n(),
+    mean_hr   = mean(mean_hr),
+    sd_hr     = sd(mean_hr),
+    median_hr = median(mean_hr),
+    iqr_hr    = IQR(mean_hr),
+    min_hr    = min(mean_hr),
+    max_hr    = max(mean_hr)
+  ) %>%
+  kable(digits = 1, caption = "Overall HR descriptive statistics (1-min)")
+```
+
+### Per-Subject
+
+```{r per-subject-stats}
+subj_stats <- pn_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  group_by(id, condition) %>%
+  summarise(
+    mean_hr  = mean(mean_hr),
+    sd_hr    = sd(mean_hr),
+    min_hr   = min(mean_hr),
+    max_hr   = max(mean_hr),
+    n_valid  = n(),
+    .groups  = "drop"
+  )
+
+subj_stats %>%
+  arrange(condition, id) %>%
+  kable(digits = 1, caption = "Per-subject HR statistics")
+```
+
+### By Condition
+
+```{r group-boxplot, fig.width=7, fig.height=5}
+subj_stats %>%
+  ggplot(aes(x = condition, y = mean_hr, fill = condition)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21) +
+  geom_jitter(width = 0.15, alpha = 0.6, size = 2.5) +
+  labs(title = "Mean HR by condition",
+       y = "Subject mean HR (bpm)") +
+  theme(legend.position = "none")
+```
+
+### Sanity Checks
+
+```{r sanity-checks}
+flag_mean <- subj_stats %>% filter(mean_hr < 40 | mean_hr > 150)
+flag_short <- subj_stats %>% filter(n_valid < 720)
+flag_artifact <- pn_1min %>% filter(!is.na(mean_hr), mean_hr < 20 | mean_hr > 250)
+
+cat("Subjects with mean HR outside [40, 150] bpm:", nrow(flag_mean), "\n")
+cat("Subjects with <12 hours valid data:", nrow(flag_short), "\n")
+cat("Individual minutes with HR outside [20, 250] bpm:", nrow(flag_artifact), "\n")
+```
+
+```{r flag-tables}
+if (nrow(flag_mean) > 0) {
+  flag_mean %>%
+    select(id, condition, mean_hr) %>%
+    kable(digits = 1, caption = "Flagged subjects: mean HR outside [40, 150]")
+}
+
+if (nrow(flag_short) > 0) {
+  flag_short %>%
+    select(id, condition, n_valid, mean_hr) %>%
+    kable(digits = 1, caption = "Subjects with <12h valid data")
+}
+```
+
+## 5 HR Time Series Plots (1-min)
+
+### All Individual Traces
+
+With only 15 subjects we can show every trace individually.
+
+```{r all-subjects-1min, fig.width=14, fig.height=10}
+pn_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  ggplot(aes(x = hours, y = mean_hr, color = condition)) +
+  geom_line(linewidth = 0.3) +
+  facet_wrap(~ id, ncol = 5, scales = "free_y") +
+  labs(title = "All subjects — 24h HR traces (1-min)",
+       x = "Time (hours)", y = "HR (bpm)") +
+  theme(legend.position = "bottom")
+```
+
+### Spaghetti Plots by Condition
+
+```{r spaghetti-1min, fig.width=14, fig.height=5}
+group_means_1min <- pn_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  group_by(condition, hours) %>%
+  summarise(group_mean = mean(mean_hr, na.rm = TRUE), .groups = "drop")
+
+pn_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  ggplot(aes(x = hours, y = mean_hr, group = id)) +
+  geom_line(alpha = 0.3, linewidth = 0.3) +
+  geom_line(data = group_means_1min,
+            aes(x = hours, y = group_mean, group = 1),
+            color = "red", linewidth = 1) +
+  facet_wrap(~ condition) +
+  labs(title = "All subjects overlaid with group mean (1-min, red = mean)",
+       x = "Time (hours)", y = "HR (bpm)")
+```
+
+## 6 HR Time Series Plots (5-min)
+
+### All Individual Traces
+
+```{r all-subjects-5min, fig.width=14, fig.height=10}
+pn_5min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  ggplot(aes(x = hours, y = mean_hr, color = condition)) +
+  geom_line(linewidth = 0.4) +
+  facet_wrap(~ id, ncol = 5, scales = "free_y") +
+  labs(title = "All subjects — 24h HR traces (5-min)",
+       x = "Time (hours)", y = "HR (bpm)") +
+  theme(legend.position = "bottom")
+```
+
+### Spaghetti Plots by Condition
+
+```{r spaghetti-5min, fig.width=14, fig.height=5}
+group_means_5min <- pn_5min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  group_by(condition, hours) %>%
+  summarise(group_mean = mean(mean_hr, na.rm = TRUE), .groups = "drop")
+
+pn_5min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(hours = minute_index / 60) %>%
+  ggplot(aes(x = hours, y = mean_hr, group = id)) +
+  geom_line(alpha = 0.3, linewidth = 0.3) +
+  geom_line(data = group_means_5min,
+            aes(x = hours, y = group_mean, group = 1),
+            color = "red", linewidth = 1) +
+  facet_wrap(~ condition) +
+  labs(title = "All subjects overlaid with group mean (5-min, red = mean)",
+       x = "Time (hours)", y = "HR (bpm)")
+```
+
+## 7 Distribution Plots
+
+### Density of All HR Values (1-min)
+
+```{r density-1min, fig.width=10, fig.height=5}
+pn_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  ggplot(aes(x = mean_hr, fill = condition)) +
+  geom_density(alpha = 0.4) +
+  labs(title = "Density of 1-min HR values by condition",
+       x = "HR (bpm)", y = "Density") +
+  scale_x_continuous(limits = c(30, 200))
+```
+
+### Per-Subject Boxplots
+
+```{r subject-boxplots, fig.width=12, fig.height=5}
+pn_1min %>%
+  filter(!is.na(mean_hr)) %>%
+  mutate(id = fct_reorder(factor(id), mean_hr, .fun = median)) %>%
+  ggplot(aes(x = id, y = mean_hr, fill = condition)) +
+  geom_boxplot(outlier.size = 0.5) +
+  labs(title = "Per-subject HR distributions (1-min)",
+       x = "Subject (sorted by median HR)", y = "HR (bpm)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```

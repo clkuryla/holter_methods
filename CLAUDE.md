@@ -6,7 +6,7 @@ Research project analyzing 24-hour Holter ECG recordings. Extracts time series m
 
 - **SHAREE** (PhysioNet): hypertension study with BP metadata
 - **PhysioNet CHAOS**: AF, CHF, Normal sinus rhythm
-- **THEW** (E-HOL databases): CAD, ESRD, Healthy controls
+- **THEW (Telemetric Holter and ECG Warehouse)** (E-HOL databases): CAD (t002; E-HOL-03-0271-002), ESRD (t016; E-HOL-12-0051-016), Healthy controls (t003; E-HOL-03-0202-003)
 
 Project is in progress and evolving.
 
@@ -36,11 +36,19 @@ Three-stage pipeline:
 | `code/cross_apply_pca.R` | `project_pca_loadings()`: train PCA on one dataset, project onto another |
 | `src/python/thew_ann_to_hr.py` | Parse THEW binary .ann files → RR intervals → 1-min HR time series |
 
+THEW DATA:
+
+combined raw: `data_proccessed/thew/hr_timeseries_1min/panel_24h_1min.csv` for 1 minute time series
+combined raw: `data_proccessed/thew/hr_timeseries_1min/panel_24h_1min.csv` for 5 minute time series
+metadata: `data_proccessed/thew/hr_timeseries_1min/clinicalData_t**/`
+
+
 ## Conventions
 
 - **Windowing**: Standard aggregation windows are 1-minute averages and 5 minute samples of the 1 minute average (1 minute averages modulo 5).
 - **R style**: Tidyverse piping (`%>%`), `group_by`/`summarize` patterns. Uses `Rcatch22::catch22_all()` with `catch24 = TRUE`.
 - **Python style**: pathlib for paths, logging module for output, struct for binary parsing.
+- **Quarto Docs**: Make them compatible with and rendered to be viewable on github
 
 ## Coding expectations
 - Prefer minimal diffs over rewrites.

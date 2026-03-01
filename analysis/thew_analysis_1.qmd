@@ -1,0 +1,752 @@
+---
+title: "THEW Holter Metrics: Group Comparisons by Health Status"
+subtitle: "Catch22 complexity, entropy, and HRV metrics across CAD, CAD+Diabetes, ESRD, and Healthy cohorts"
+date: today
+format:
+  gfm:
+    toc: true
+    toc-depth: 3
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 3
+    code-fold: true
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+## 1 Setup & Data Loading
+
+```{r setup}
+library(tidyverse)
+library(here)
+library(knitr)
+library(broom)
+library(scales)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{r load-data}
+metrics_1min <- read_csv(here("results/thew/thew_metrics_1min.csv"),
+                         show_col_types = FALSE)
+metrics_5min <- read_csv(here("results/thew/thew_metrics_5min.csv"),
+                         show_col_types = FALSE)
+```
+
+```{r define-columns}
+# --- Metric column definitions ---
+# 24 catch22 + 7 descriptive stats + 3 entropy = 34 avg_hr columns
+avg_hr_cols <- c(
+
+  # catch22 (24)
+  "avg_hr_DN_HistogramMode_5", "avg_hr_DN_HistogramMode_10",
+  "avg_hr_CO_f1ecac", "avg_hr_CO_FirstMin_ac",
+  "avg_hr_CO_HistogramAMI_even_2_5", "avg_hr_CO_trev_1_num",
+  "avg_hr_MD_hrv_classic_pnn40",
+  "avg_hr_SB_BinaryStats_mean_longstretch1",
+  "avg_hr_SB_TransitionMatrix_3ac_sumdiagcov",
+  "avg_hr_PD_PeriodicityWang_th0_01",
+  "avg_hr_CO_Embed2_Dist_tau_d_expfit_meandiff",
+  "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi",
+  "avg_hr_FC_LocalSimple_mean1_tauresrat",
+  "avg_hr_DN_OutlierInclude_p_001_mdrmd",
+  "avg_hr_DN_OutlierInclude_n_001_mdrmd",
+  "avg_hr_SP_Summaries_welch_rect_area_5_1",
+  "avg_hr_SB_BinaryStats_diff_longstretch0",
+  "avg_hr_SB_MotifThree_quantile_hh",
+  "avg_hr_SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1",
+  "avg_hr_SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1",
+  "avg_hr_SP_Summaries_welch_rect_centroid",
+  "avg_hr_FC_LocalSimple_mean3_stderr",
+  "avg_hr_DN_Mean", "avg_hr_DN_Spread_Std",
+  # descriptive stats (7)
+  "avg_hr_mean", "avg_hr_sd", "avg_hr_max", "avg_hr_min",
+  "avg_hr_cv", "avg_hr_iqr", "avg_hr_median",
+  # entropy (3)
+  "avg_hr_apen", "avg_hr_sampen", "avg_hr_permen"
+)
+
+# HRV columns (4) — mean_beat_count excluded (data-quantity, not HR dynamics)
+hrv_cols <- c("mean_sdnn_ms", "mean_rmssd_ms", "mean_median_hr", "mean_sd_hr")
+
+all_metric_cols <- c(avg_hr_cols, hrv_cols)
+
+# Guardrails
+stopifnot(length(avg_hr_cols) == 34)
+stopifnot(length(hrv_cols) == 4)
+stopifnot(length(all_metric_cols) == 38)
+```
+
+```{r prepare-data}
+# Factor condition4 with explicit level order
+condition4_levels <- c("Healthy", "CAD", "CAD_Diabetes", "ESRD")
+
+prepare_data <- function(df) {
+  stopifnot(all(c("condition4", all_metric_cols) %in% names(df)))
+  df %>%
+    mutate(condition4 = factor(condition4, levels = condition4_levels))
+}
+
+metrics_1min <- prepare_data(metrics_1min)
+metrics_5min <- prepare_data(metrics_5min)
+
+# Color palette for the 4 groups
+condition4_colors <- c(
+  "Healthy"      = "#4DAF4A",
+  "CAD"          = "#377EB8",
+  "CAD_Diabetes" = "#FF7F00",
+  "ESRD"         = "#E41A1C"
+)
+```
+
+
+## 2 Data Overview & Demographics
+
+```{r group-sizes}
+bind_rows(
+  metrics_5min %>% count(condition4, name = "n") %>% mutate(resolution = "5-min"),
+  metrics_1min %>% count(condition4, name = "n") %>% mutate(resolution = "1-min")
+) %>%
+  pivot_wider(names_from = resolution, values_from = n) %>%
+  kable(caption = "Subjects by condition4 group")
+```
+
+```{r demographics}
+demo_cols <- c("AGE", "BMI", "GENDER")
+demo_available <- intersect(demo_cols, names(metrics_5min))
+
+if (length(demo_available) > 0) {
+  # Numeric demographics
+  num_demo <- intersect(c("AGE", "BMI"), demo_available)
+  if (length(num_demo) > 0) {
+    metrics_5min %>%
+      group_by(condition4) %>%
+      summarize(
+        across(all_of(num_demo),
+               list(mean = ~mean(.x, na.rm = TRUE),
+                    sd   = ~sd(.x, na.rm = TRUE),
+                    n_NA = ~sum(is.na(.x))),
+               .names = "{.col}_{.fn}"),
+        .groups = "drop"
+      ) %>%
+      kable(digits = 1, caption = "Demographics by condition4 (mean +/- SD)")
+  }
+
+  # Gender breakdown
+  if ("GENDER" %in% demo_available) {
+    metrics_5min %>%
+      count(condition4, GENDER) %>%
+      pivot_wider(names_from = GENDER, values_from = n, values_fill = 0) %>%
+      kable(caption = "Gender distribution by condition4")
+  }
+}
+```
+
+```{r na-audit}
+na_counts <- metrics_5min %>%
+  summarize(across(all_of(all_metric_cols), ~sum(is.na(.x)))) %>%
+  pivot_longer(everything(), names_to = "metric", values_to = "n_NA_5min")
+
+na_counts_1 <- metrics_1min %>%
+  summarize(across(all_of(all_metric_cols), ~sum(is.na(.x)))) %>%
+  pivot_longer(everything(), names_to = "metric", values_to = "n_NA_1min")
+
+na_summary <- left_join(na_counts, na_counts_1, by = "metric") %>%
+  filter(n_NA_5min > 0 | n_NA_1min > 0)
+
+if (nrow(na_summary) > 0) {
+  na_summary %>% kable(caption = "Metrics with missing values")
+} else {
+  cat("No missing values in any metric column.\n")
+}
+```
+
+
+## 3 Boxplots by Condition
+
+```{r boxplot-helpers}
+# Helper to pivot metrics long and strip avg_hr_ prefix for labels
+pivot_metrics_long <- function(df, metric_cols) {
+  df %>%
+    select(id, condition4, all_of(metric_cols)) %>%
+    pivot_longer(
+      cols = all_of(metric_cols),
+      names_to = "metric",
+      values_to = "value"
+    ) %>%
+    mutate(metric_label = str_remove(metric, "^avg_hr_"))
+}
+
+# Boxplot function
+plot_boxplots <- function(df_long, ncol = 4, title = "") {
+  ggplot(df_long, aes(x = condition4, y = value, fill = condition4)) +
+    geom_boxplot(alpha = 0.7, outlier.shape = 21, outlier.size = 1) +
+    facet_wrap(~ metric_label, scales = "free_y", ncol = ncol) +
+    scale_fill_manual(values = condition4_colors) +
+    labs(title = title, x = NULL, y = NULL, fill = "Condition") +
+    theme(
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      strip.text = element_text(size = 7),
+      legend.position = "bottom"
+    )
+}
+```
+
+### avg_hr Metrics (catch22 + descriptive + entropy)
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r boxplots-avghr-5min, fig.width=14, fig.height=22}
+pivot_metrics_long(metrics_5min, avg_hr_cols) %>%
+  plot_boxplots(ncol = 4, title = "avg_hr Metrics by Condition (5-min)")
+```
+
+#### 1-min
+
+```{r boxplots-avghr-1min, fig.width=14, fig.height=22}
+pivot_metrics_long(metrics_1min, avg_hr_cols) %>%
+  plot_boxplots(ncol = 4, title = "avg_hr Metrics by Condition (1-min)")
+```
+
+:::
+
+### HRV Metrics
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r boxplots-hrv-5min, fig.width=10, fig.height=5}
+pivot_metrics_long(metrics_5min, hrv_cols) %>%
+  plot_boxplots(ncol = 2, title = "HRV Metrics by Condition (5-min)")
+```
+
+#### 1-min
+
+```{r boxplots-hrv-1min, fig.width=10, fig.height=5}
+pivot_metrics_long(metrics_1min, hrv_cols) %>%
+  plot_boxplots(ncol = 2, title = "HRV Metrics by Condition (1-min)")
+```
+
+:::
+
+
+## 4 Omnibus Significance Tests (ANOVA & Kruskal-Wallis)
+
+```{r omnibus-helper}
+run_omnibus_tests <- function(df, metric_cols) {
+  df_long <- pivot_metrics_long(df, metric_cols)
+
+  df_long %>%
+    group_by(metric, metric_label) %>%
+    group_modify(~ {
+      dat <- .x %>% filter(!is.na(value))
+      if (n_distinct(dat$condition4) < 2) {
+        return(tibble(
+          test = c("ANOVA", "Kruskal-Wallis"),
+          statistic = NA_real_, p.value = NA_real_
+        ))
+      }
+
+      # ANOVA
+      aov_res <- aov(value ~ condition4, data = dat)
+      aov_tidy <- tidy(aov_res) %>%
+        filter(term == "condition4") %>%
+        select(statistic, p.value) %>%
+        mutate(test = "ANOVA")
+
+      # Kruskal-Wallis
+      kw_res <- kruskal.test(value ~ condition4, data = dat)
+      kw_tidy <- tidy(kw_res) %>%
+        select(statistic, p.value) %>%
+        mutate(test = "Kruskal-Wallis")
+
+      bind_rows(aov_tidy, kw_tidy)
+    }) %>%
+    ungroup() %>%
+    group_by(test) %>%
+    mutate(p_adj = p.adjust(p.value, method = "BH")) %>%
+    ungroup() %>%
+    mutate(
+      sig = case_when(
+        p_adj < 0.001 ~ "***",
+        p_adj < 0.01  ~ "**",
+        p_adj < 0.05  ~ "*",
+        TRUE          ~ ""
+      )
+    )
+}
+
+format_omnibus_table <- function(omnibus_df) {
+  omnibus_df %>%
+    select(metric_label, test, statistic, p.value, p_adj, sig) %>%
+    mutate(
+      statistic = round(statistic, 2),
+      p.value = signif(p.value, 3),
+      p_adj = signif(p_adj, 3)
+    ) %>%
+    arrange(p.value) %>%
+    kable(col.names = c("Metric", "Test", "Statistic", "p-value", "p (BH-adj)", "Sig"))
+}
+```
+
+::: {.panel-tabset}
+
+### 5-min
+
+```{r omnibus-5min}
+omnibus_5min <- run_omnibus_tests(metrics_5min, all_metric_cols)
+format_omnibus_table(omnibus_5min)
+```
+
+### 1-min
+
+```{r omnibus-1min}
+omnibus_1min <- run_omnibus_tests(metrics_1min, all_metric_cols)
+format_omnibus_table(omnibus_1min)
+```
+
+:::
+
+
+## 5 Pairwise Significance Tests
+
+```{r pairwise-helper}
+run_pairwise_tests <- function(df, metric_cols) {
+  df_long <- pivot_metrics_long(df, metric_cols)
+  pairs <- combn(condition4_levels, 2, simplify = FALSE)
+
+  results <- map_dfr(pairs, function(pair) {
+    df_pair <- df_long %>% filter(condition4 %in% pair, !is.na(value))
+
+    df_pair %>%
+      group_by(metric, metric_label) %>%
+      group_modify(~ {
+        dat <- .x
+        if (n_distinct(dat$condition4) < 2 || nrow(dat) < 4) {
+          return(tibble(
+            group1 = pair[1], group2 = pair[2],
+            t_stat = NA_real_, t_p = NA_real_,
+            w_stat = NA_real_, w_p = NA_real_
+          ))
+        }
+
+        # Welch's t-test
+        tt <- tryCatch(
+          t.test(value ~ condition4, data = dat),
+          error = function(e) NULL
+        )
+        # Wilcoxon rank-sum
+        wt <- tryCatch(
+          wilcox.test(value ~ condition4, data = dat),
+          error = function(e) NULL
+        )
+
+        tibble(
+          group1 = pair[1], group2 = pair[2],
+          t_stat = if (!is.null(tt)) tt$statistic else NA_real_,
+          t_p    = if (!is.null(tt)) tt$p.value   else NA_real_,
+          w_stat = if (!is.null(wt)) wt$statistic else NA_real_,
+          w_p    = if (!is.null(wt)) wt$p.value   else NA_real_
+        )
+      }) %>%
+      ungroup()
+  })
+
+  # BH adjustment across all pairwise tests per test type
+  results %>%
+    mutate(
+      t_p_adj = p.adjust(t_p, method = "BH"),
+      w_p_adj = p.adjust(w_p, method = "BH"),
+      pair = paste(group1, "vs", group2)
+    )
+}
+
+# Summary: for each metric, the most significant pair
+pairwise_summary <- function(pw_df) {
+  pw_df %>%
+    group_by(metric, metric_label) %>%
+    slice_min(w_p, n = 1, with_ties = FALSE) %>%
+    ungroup() %>%
+    select(metric_label, pair, w_stat, w_p, w_p_adj, t_p) %>%
+    mutate(
+      sig = case_when(
+        w_p_adj < 0.001 ~ "***",
+        w_p_adj < 0.01  ~ "**",
+        w_p_adj < 0.05  ~ "*",
+        TRUE            ~ ""
+      ),
+      w_p = signif(w_p, 3),
+      w_p_adj = signif(w_p_adj, 3),
+      t_p = signif(t_p, 3),
+      w_stat = round(w_stat, 1)
+    ) %>%
+    arrange(w_p) %>%
+    kable(col.names = c("Metric", "Most Sig. Pair", "W stat", "Wilcox p",
+                         "Wilcox p (BH)", "t-test p", "Sig"),
+           caption = "Most significant pairwise comparison per metric (Wilcoxon)")
+}
+
+# Full pairwise table
+pairwise_full_table <- function(pw_df) {
+  pw_df %>%
+    select(metric_label, pair, t_stat, t_p, t_p_adj, w_stat, w_p, w_p_adj) %>%
+    mutate(
+      across(c(t_stat, w_stat), ~round(.x, 2)),
+      across(c(t_p, t_p_adj, w_p, w_p_adj), ~signif(.x, 3))
+    ) %>%
+    arrange(w_p) %>%
+    kable(col.names = c("Metric", "Pair", "t stat", "t p", "t p (BH)",
+                         "W stat", "W p", "W p (BH)"))
+}
+```
+
+::: {.panel-tabset}
+
+### 5-min
+
+```{r pairwise-5min}
+pw_5min <- run_pairwise_tests(metrics_5min, all_metric_cols)
+```
+
+**Summary — most significant pair per metric:**
+
+```{r pairwise-5min-summary}
+pairwise_summary(pw_5min)
+```
+
+<details>
+<summary>Full pairwise results (click to expand)</summary>
+
+```{r pairwise-5min-full}
+pairwise_full_table(pw_5min)
+```
+
+</details>
+
+### 1-min
+
+```{r pairwise-1min}
+pw_1min <- run_pairwise_tests(metrics_1min, all_metric_cols)
+```
+
+**Summary — most significant pair per metric:**
+
+```{r pairwise-1min-summary}
+pairwise_summary(pw_1min)
+```
+
+<details>
+<summary>Full pairwise results (click to expand)</summary>
+
+```{r pairwise-1min-full}
+pairwise_full_table(pw_1min)
+```
+
+</details>
+
+:::
+
+
+## 6 PCA Analysis
+
+```{r pca-helper}
+run_pca_analysis <- function(df, metric_cols, title_prefix = "") {
+  # Select metric columns and condition4
+  df_pca <- df %>% select(id, condition4, all_of(metric_cols))
+
+  # Report NA count
+  n_na <- sum(!complete.cases(df_pca %>% select(all_of(metric_cols))))
+  if (n_na > 0) {
+    cat(sprintf("Note: %d subjects removed due to NA in PCA input columns.\n", n_na))
+  }
+
+  # Remove NAs for PCA
+  df_complete <- df_pca %>% filter(complete.cases(across(all_of(metric_cols))))
+
+  # Remove zero-variance columns
+  df_num <- df_complete %>% select(all_of(metric_cols))
+  zero_var <- names(df_num)[map_lgl(df_num, ~sd(.x, na.rm = TRUE) == 0)]
+  if (length(zero_var) > 0) {
+    cat(sprintf("Removed %d zero-variance columns: %s\n",
+                length(zero_var), paste(zero_var, collapse = ", ")))
+    metric_cols <- setdiff(metric_cols, zero_var)
+    df_num <- df_complete %>% select(all_of(metric_cols))
+  }
+
+  stopifnot(nrow(df_num) >= 2, ncol(df_num) >= 2)
+
+  # PCA
+  pca_res <- prcomp(df_num, center = TRUE, scale. = TRUE)
+
+  # Variance explained
+  var_exp <- (pca_res$sdev^2) / sum(pca_res$sdev^2)
+  var_pct <- round(var_exp * 100, 1)
+  cum_var <- cumsum(var_pct)
+
+  # Scores with metadata
+  scores <- as.data.frame(pca_res$x) %>%
+    bind_cols(df_complete %>% select(id, condition4))
+
+  # --- Plot 1: PC1 vs PC2 ---
+  p12 <- ggplot(scores, aes(x = PC1, y = PC2, color = condition4)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition4_colors) +
+    labs(
+      title = paste(title_prefix, "PC1 vs PC2"),
+      x = sprintf("PC1 (%.1f%%)", var_pct[1]),
+      y = sprintf("PC2 (%.1f%%)", var_pct[2]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  # --- Plot 2: PC3 vs PC4 ---
+  p34 <- ggplot(scores, aes(x = PC3, y = PC4, color = condition4)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition4_colors) +
+    labs(
+      title = paste(title_prefix, "PC3 vs PC4"),
+      x = sprintf("PC3 (%.1f%%)", var_pct[3]),
+      y = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  # --- Plot 3: Loadings heatmap (PC1-PC6) ---
+  n_pcs <- min(6, ncol(pca_res$rotation))
+  loadings_df <- as.data.frame(pca_res$rotation[, 1:n_pcs]) %>%
+    rownames_to_column(var = "variable") %>%
+    mutate(variable = str_remove(variable, "^avg_hr_")) %>%
+    pivot_longer(cols = starts_with("PC"), names_to = "PC", values_to = "loading")
+
+  pc_labels <- paste0("PC", 1:n_pcs, "\n(", var_pct[1:n_pcs], "%)")
+  pc_lut <- setNames(pc_labels, paste0("PC", 1:n_pcs))
+
+  p_load <- ggplot(loadings_df, aes(x = PC, y = variable, fill = loading)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                         midpoint = 0) +
+    scale_x_discrete(labels = pc_lut) +
+    labs(
+      title = paste(title_prefix, "Loadings Heatmap"),
+      x = "Principal Component", y = NULL, fill = "Loading"
+    ) +
+    theme(axis.text.y = element_text(size = 7))
+
+  # --- Plot 4: Variance explained ---
+  var_df <- tibble(
+    PC = factor(paste0("PC", 1:min(15, length(var_pct))),
+                levels = paste0("PC", 1:min(15, length(var_pct)))),
+    pct = var_pct[1:min(15, length(var_pct))],
+    cum = cum_var[1:min(15, length(var_pct))]
+  )
+
+  p_var <- ggplot(var_df, aes(x = PC, y = pct)) +
+    geom_col(fill = "steelblue", alpha = 0.7) +
+    geom_line(aes(y = cum, group = 1), color = "firebrick", linewidth = 1) +
+    geom_point(aes(y = cum), color = "firebrick", size = 2) +
+    geom_hline(yintercept = 80, linetype = "dashed", color = "grey50") +
+    labs(
+      title = paste(title_prefix, "Variance Explained"),
+      x = NULL, y = "Variance (%)"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  list(p12 = p12, p34 = p34, p_load = p_load, p_var = p_var,
+       pca_res = pca_res, scores = scores, n_na = n_na)
+}
+```
+
+### 6.1 All Metrics (38)
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r pca-all-5min, fig.width=10, fig.height=6}
+pca_all_5 <- run_pca_analysis(metrics_5min, all_metric_cols, "All Metrics —")
+pca_all_5$p12
+```
+
+```{r pca-all-5min-34, fig.width=10, fig.height=6}
+pca_all_5$p34
+```
+
+```{r pca-all-5min-load, fig.width=10, fig.height=10}
+pca_all_5$p_load
+```
+
+```{r pca-all-5min-var, fig.width=8, fig.height=4}
+pca_all_5$p_var
+```
+
+#### 1-min
+
+```{r pca-all-1min, fig.width=10, fig.height=6}
+pca_all_1 <- run_pca_analysis(metrics_1min, all_metric_cols, "All Metrics —")
+pca_all_1$p12
+```
+
+```{r pca-all-1min-34, fig.width=10, fig.height=6}
+pca_all_1$p34
+```
+
+```{r pca-all-1min-load, fig.width=10, fig.height=10}
+pca_all_1$p_load
+```
+
+```{r pca-all-1min-var, fig.width=8, fig.height=4}
+pca_all_1$p_var
+```
+
+:::
+
+### 6.2 avg_hr Metrics Only (34)
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r pca-avghr-5min, fig.width=10, fig.height=6}
+pca_avghr_5 <- run_pca_analysis(metrics_5min, avg_hr_cols, "avg_hr —")
+pca_avghr_5$p12
+```
+
+```{r pca-avghr-5min-34, fig.width=10, fig.height=6}
+pca_avghr_5$p34
+```
+
+```{r pca-avghr-5min-load, fig.width=10, fig.height=10}
+pca_avghr_5$p_load
+```
+
+```{r pca-avghr-5min-var, fig.width=8, fig.height=4}
+pca_avghr_5$p_var
+```
+
+#### 1-min
+
+```{r pca-avghr-1min, fig.width=10, fig.height=6}
+pca_avghr_1 <- run_pca_analysis(metrics_1min, avg_hr_cols, "avg_hr —")
+pca_avghr_1$p12
+```
+
+```{r pca-avghr-1min-34, fig.width=10, fig.height=6}
+pca_avghr_1$p34
+```
+
+```{r pca-avghr-1min-load, fig.width=10, fig.height=10}
+pca_avghr_1$p_load
+```
+
+```{r pca-avghr-1min-var, fig.width=8, fig.height=4}
+pca_avghr_1$p_var
+```
+
+:::
+
+### 6.3 Top Significant avg_hr Metrics
+
+```{r select-top-metrics}
+# Select avg_hr metrics where KW p_adj < 0.05 (from 5-min omnibus)
+top_metrics_kw <- omnibus_5min %>%
+  filter(test == "Kruskal-Wallis", metric %in% avg_hr_cols) %>%
+  filter(p_adj < 0.05) %>%
+  pull(metric)
+
+# Fallback: if fewer than 3 pass threshold, use top 10 by raw p-value
+if (length(top_metrics_kw) < 3) {
+  cat("Fewer than 3 metrics pass KW p_adj < 0.05 — using top 10 by raw p-value.\n")
+  top_metrics_kw <- omnibus_5min %>%
+    filter(test == "Kruskal-Wallis", metric %in% avg_hr_cols) %>%
+    arrange(p.value) %>%
+    slice_head(n = 10) %>%
+    pull(metric)
+}
+
+cat(sprintf("Using %d significant avg_hr metrics for PCA:\n", length(top_metrics_kw)))
+cat(paste("-", str_remove(top_metrics_kw, "^avg_hr_")), sep = "\n")
+```
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r pca-top-5min, fig.width=10, fig.height=6}
+pca_top_5 <- run_pca_analysis(metrics_5min, top_metrics_kw, "Top Sig. —")
+pca_top_5$p12
+```
+
+```{r pca-top-5min-34, fig.width=10, fig.height=6}
+pca_top_5$p34
+```
+
+```{r pca-top-5min-load, fig.width=10, fig.height=8}
+pca_top_5$p_load
+```
+
+```{r pca-top-5min-var, fig.width=8, fig.height=4}
+pca_top_5$p_var
+```
+
+#### 1-min
+
+```{r pca-top-1min, fig.width=10, fig.height=6}
+pca_top_1 <- run_pca_analysis(metrics_1min, top_metrics_kw, "Top Sig. —")
+pca_top_1$p12
+```
+
+```{r pca-top-1min-34, fig.width=10, fig.height=6}
+pca_top_1$p34
+```
+
+```{r pca-top-1min-load, fig.width=10, fig.height=8}
+pca_top_1$p_load
+```
+
+```{r pca-top-1min-var, fig.width=8, fig.height=4}
+pca_top_1$p_var
+```
+
+:::
+
+
+## 7 Summary
+
+```{r summary-text, results='asis'}
+# Top 5 metrics by omnibus KW (5-min)
+top5_kw <- omnibus_5min %>%
+  filter(test == "Kruskal-Wallis") %>%
+  arrange(p_adj) %>%
+  slice_head(n = 5)
+
+cat("### Key Findings\n\n")
+cat(sprintf("**Omnibus tests**: %d of %d metrics show significant group differences (KW p_adj < 0.05, 5-min resolution).\n\n",
+            sum(omnibus_5min$test == "Kruskal-Wallis" & omnibus_5min$p_adj < 0.05, na.rm = TRUE),
+            length(all_metric_cols)))
+
+cat("**Top 5 most discriminating metrics** (Kruskal-Wallis, 5-min, BH-adjusted):\n\n")
+for (i in seq_len(nrow(top5_kw))) {
+  cat(sprintf("%d. **%s** — p_adj = %.2e %s\n",
+              i, top5_kw$metric_label[i], top5_kw$p_adj[i], top5_kw$sig[i]))
+}
+
+# Pairwise highlight
+top_pair <- pw_5min %>%
+  slice_min(w_p, n = 1, with_ties = FALSE)
+cat(sprintf("\n**Most significant pairwise comparison**: %s vs %s on metric %s (Wilcoxon p = %.2e).\n\n",
+            top_pair$group1, top_pair$group2,
+            str_remove(top_pair$metric, "^avg_hr_"),
+            top_pair$w_p))
+
+cat("**Note**: CAD_Diabetes (n=29) and ESRD (n=41) groups have relatively small sample sizes; ",
+    "non-parametric tests (Kruskal-Wallis, Wilcoxon) are more reliable than parametric alternatives ",
+    "for these groups.\n")
+```

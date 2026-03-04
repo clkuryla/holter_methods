@@ -1,6 +1,6 @@
 # THEW Holter Metrics: Group Comparisons by Health Status
 
-2026-02-28
+2026-03-04
 
 - [1 Setup & Data Loading](#1-setup--data-loading)
 - [2 Data Overview & Demographics](#2-data-overview--demographics)
@@ -8,12 +8,19 @@
   - [avg_hr Metrics (catch22 + descriptive +
     entropy)](#avg_hr-metrics-catch22--descriptive--entropy)
   - [HRV Metrics](#hrv-metrics)
+- [3.5 Correlation Heatmap](#35-correlation-heatmap)
+  - [3.6 Permutation Entropy vs CV
+    Scatter](#36-permutation-entropy-vs-cv-scatter)
+  - [3.7 SDNN & RMSSD by Condition](#37-sdnn--rmssd-by-condition)
 - [4 Omnibus Significance Tests (ANOVA &
   Kruskal-Wallis)](#4-omnibus-significance-tests-anova--kruskal-wallis)
 - [5 Pairwise Significance Tests](#5-pairwise-significance-tests)
 - [6 PCA Analysis](#6-pca-analysis)
   - [6.1 All Metrics (38)](#61-all-metrics-38)
   - [6.2 avg_hr Metrics Only (34)](#62-avg_hr-metrics-only-34)
+  - [6.2.1 HRV vs avg_hr PCA Scores](#621-hrv-vs-avg_hr-pca-scores)
+  - [6.2.2 SDNN vs −PC3: Sign-Flipped
+    Agreement](#622-sdnn-vs-pc3-sign-flipped-agreement)
   - [6.3 Top Significant avg_hr
     Metrics](#63-top-significant-avg_hr-metrics)
 - [7 Summary](#7-summary)
@@ -70,6 +77,72 @@ Gender distribution by condition4
 #### 1-min
 
 ![](thew_analysis_1_files/figure-commonmark/boxplots-hrv-1min-1.png)
+
+</div>
+
+## 3.5 Correlation Heatmap
+
+<div class="panel-tabset">
+
+### 5-min
+
+![](thew_analysis_1_files/figure-commonmark/corr-heatmap-5min-1.png)
+
+### 1-min
+
+![](thew_analysis_1_files/figure-commonmark/corr-heatmap-1min-1.png)
+
+</div>
+
+### 3.6 Permutation Entropy vs CV Scatter
+
+<div class="panel-tabset">
+
+#### 5-min
+
+![](thew_analysis_1_files/figure-commonmark/permen-cv-scatter-5min-1.png)
+
+#### 1-min
+
+![](thew_analysis_1_files/figure-commonmark/permen-cv-scatter-1min-1.png)
+
+</div>
+
+### 3.7 SDNN & RMSSD by Condition
+
+<div class="panel-tabset">
+
+#### 5-min
+
+![](thew_analysis_1_files/figure-commonmark/sdnn-jitter-5min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/rmssd-jitter-5min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/permen-jitter-5min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/sd-jitter-5min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/cv-jitter-5min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/mean-hr-jitter-5min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/median-hr-jitter-5min-1.png)
+
+#### 1-min
+
+![](thew_analysis_1_files/figure-commonmark/sdnn-jitter-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/rmssd-jitter-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/permen-jitter-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/sd-jitter-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/cv-jitter-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/mean-hr-jitter-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/median-hr-jitter-1min-1.png)
 
 </div>
 
@@ -831,6 +904,8 @@ Full pairwise results (click to expand)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-all-5min-1.png)
 
+![](thew_analysis_1_files/figure-commonmark/pca-all-5min-13-1.png)
+
 ![](thew_analysis_1_files/figure-commonmark/pca-all-5min-34-1.png)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-all-5min-load-1.png)
@@ -840,6 +915,8 @@ Full pairwise results (click to expand)
 #### 1-min
 
 ![](thew_analysis_1_files/figure-commonmark/pca-all-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-all-1min-13-1.png)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-all-1min-34-1.png)
 
@@ -857,21 +934,11030 @@ Full pairwise results (click to expand)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-1.png)
 
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-3d-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-dist-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-pc1-jitter-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-pc2-jitter-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-pc3-jitter-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-dist-line-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-pc1-line-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-pc2-line-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-pc3-line-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-13-1.png)
+
 ![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-34-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-42-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-45-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-46-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-47-1.png)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-load-1.png)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-avghr-5min-var-1.png)
 
+<details>
+
+<summary>
+
+<b>PC1 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(215,227,250); color:black; text-align:right;">
+
+-0.26
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(213,218,226); color:black; text-align:right;">
+
++0.26
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(213,219,227); color:black; text-align:right;">
+
++0.25
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,228,251); color:black; text-align:right;">
+
+-0.25
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,221,228); color:black; text-align:right;">
+
++0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,222,229); color:black; text-align:right;">
+
++0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,222,229); color:black; text-align:right;">
+
++0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,230,251); color:black; text-align:right;">
+
+-0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(211,225,231); color:black; text-align:right;">
+
++0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(211,225,231); color:black; text-align:right;">
+
++0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,233,251); color:black; text-align:right;">
+
+-0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(211,225,231); color:black; text-align:right;">
+
++0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,233,251); color:black; text-align:right;">
+
+-0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(224,234,251); color:black; text-align:right;">
+
+-0.20
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(224,234,251); color:black; text-align:right;">
+
+-0.20
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(209,229,235); color:black; text-align:right;">
+
++0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,231,236); color:black; text-align:right;">
+
++0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,234,238); color:black; text-align:right;">
+
++0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,234,238); color:black; text-align:right;">
+
++0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,234,238); color:black; text-align:right;">
+
++0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,239,243); color:black; text-align:right;">
+
++0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC2 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,216,249); color:black; text-align:right;">
+
+-0.36
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,216,249); color:black; text-align:right;">
+
+-0.36
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,218,249); color:black; text-align:right;">
+
+-0.35
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,218,249); color:black; text-align:right;">
+
+-0.35
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(213,226,250); color:black; text-align:right;">
+
+-0.27
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,233,251); color:black; text-align:right;">
+
+-0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,233,251); color:black; text-align:right;">
+
+-0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,231,236); color:black; text-align:right;">
+
++0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(229,237,252); color:black; text-align:right;">
+
+-0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,232,237); color:black; text-align:right;">
+
++0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(230,238,252); color:black; text-align:right;">
+
+-0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,234,238); color:black; text-align:right;">
+
++0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(233,240,253); color:black; text-align:right;">
+
+-0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(236,242,253); color:black; text-align:right;">
+
+-0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(239,244,253); color:black; text-align:right;">
+
+-0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(241,245,253); color:black; text-align:right;">
+
+-0.09
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(204,242,245); color:black; text-align:right;">
+
++0.09
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(243,246,254); color:black; text-align:right;">
+
+-0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC3 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(220,201,212); color:black; text-align:right;">
+
++0.38
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,218,249); color:black; text-align:right;">
+
+-0.35
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(218,206,217); color:black; text-align:right;">
+
++0.34
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(213,218,226); color:black; text-align:right;">
+
++0.26
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,221,228); color:black; text-align:right;">
+
++0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,221,228); color:black; text-align:right;">
+
++0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,230,251); color:black; text-align:right;">
+
+-0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,230,251); color:black; text-align:right;">
+
+-0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,228,234); color:black; text-align:right;">
+
++0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(225,235,252); color:black; text-align:right;">
+
+-0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,228,234); color:black; text-align:right;">
+
++0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,231,236); color:black; text-align:right;">
+
++0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,232,237); color:black; text-align:right;">
+
++0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,232,237); color:black; text-align:right;">
+
++0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,234,238); color:black; text-align:right;">
+
++0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,236,240); color:black; text-align:right;">
+
++0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(236,242,253); color:black; text-align:right;">
+
+-0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(239,244,253); color:black; text-align:right;">
+
+-0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(241,245,253); color:black; text-align:right;">
+
+-0.09
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,246,248); color:black; text-align:right;">
+
++0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,246,248); color:black; text-align:right;">
+
++0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
+-0.00
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC4 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(197,215,248); color:black; text-align:right;">
+
+-0.37
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,204,215); color:black; text-align:right;">
+
++0.36
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(217,209,219); color:black; text-align:right;">
+
++0.32
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(215,214,222); color:black; text-align:right;">
+
++0.29
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(211,225,250); color:black; text-align:right;">
+
+-0.28
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(215,215,224); color:black; text-align:right;">
+
++0.28
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(214,216,225); color:black; text-align:right;">
+
++0.27
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(225,235,252); color:black; text-align:right;">
+
+-0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,228,234); color:black; text-align:right;">
+
++0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(227,236,252); color:black; text-align:right;">
+
+-0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(227,236,252); color:black; text-align:right;">
+
+-0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(229,237,252); color:black; text-align:right;">
+
+-0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,231,236); color:black; text-align:right;">
+
++0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(232,239,252); color:black; text-align:right;">
+
+-0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(233,240,253); color:black; text-align:right;">
+
+-0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(233,240,253); color:black; text-align:right;">
+
+-0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(238,243,253); color:black; text-align:right;">
+
+-0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(243,246,254); color:black; text-align:right;">
+
+-0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,246,248); color:black; text-align:right;">
+
++0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC5 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(229,179,196); color:black; text-align:right;">
+
++0.53
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(226,185,200); color:black; text-align:right;">
+
++0.49
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(215,227,250); color:black; text-align:right;">
+
+-0.26
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(215,227,250); color:black; text-align:right;">
+
+-0.26
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,221,228); color:black; text-align:right;">
+
++0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,222,229); color:black; text-align:right;">
+
++0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(211,225,231); color:black; text-align:right;">
+
++0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(232,239,252); color:black; text-align:right;">
+
+-0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,234,238); color:black; text-align:right;">
+
++0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(243,246,254); color:black; text-align:right;">
+
+-0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,246,248); color:black; text-align:right;">
+
++0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,246,248); color:black; text-align:right;">
+
++0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
+-0.00
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC6 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(171,197,245); color:black; text-align:right;">
+
+-0.54
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(227,184,199); color:black; text-align:right;">
+
++0.50
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,224,250); color:black; text-align:right;">
+
+-0.29
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,228,251); color:black; text-align:right;">
+
+-0.25
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,228,251); color:black; text-align:right;">
+
+-0.25
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,233,251); color:black; text-align:right;">
+
+-0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(227,236,252); color:black; text-align:right;">
+
+-0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(227,236,252); color:black; text-align:right;">
+
+-0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,232,237); color:black; text-align:right;">
+
++0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(232,239,252); color:black; text-align:right;">
+
+-0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(233,240,253); color:black; text-align:right;">
+
+-0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,236,240); color:black; text-align:right;">
+
++0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(238,243,253); color:black; text-align:right;">
+
+-0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(204,242,245); color:black; text-align:right;">
+
++0.09
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC7 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,196,209); color:black; text-align:right;">
+
++0.41
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(220,201,212); color:black; text-align:right;">
+
++0.38
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,204,215); color:black; text-align:right;">
+
++0.36
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,224,250); color:black; text-align:right;">
+
+-0.29
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(215,214,222); color:black; text-align:right;">
+
++0.29
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(214,216,225); color:black; text-align:right;">
+
++0.27
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(215,227,250); color:black; text-align:right;">
+
+-0.26
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,230,251); color:black; text-align:right;">
+
+-0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(221,231,251); color:black; text-align:right;">
+
+-0.22
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(227,236,252); color:black; text-align:right;">
+
+-0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(229,237,252); color:black; text-align:right;">
+
+-0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(232,239,252); color:black; text-align:right;">
+
+-0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(233,240,253); color:black; text-align:right;">
+
+-0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(236,242,253); color:black; text-align:right;">
+
+-0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(239,244,253); color:black; text-align:right;">
+
+-0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(243,246,254); color:black; text-align:right;">
+
+-0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC8 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(160,190,244); color:white; text-align:right;">
+
+-0.61
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(228,181,197); color:black; text-align:right;">
+
++0.52
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,222,249); color:black; text-align:right;">
+
+-0.31
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(218,229,251); color:black; text-align:right;">
+
+-0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(224,234,251); color:black; text-align:right;">
+
+-0.20
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(229,237,252); color:black; text-align:right;">
+
+-0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(230,238,252); color:black; text-align:right;">
+
+-0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,234,238); color:black; text-align:right;">
+
++0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(233,240,253); color:black; text-align:right;">
+
+-0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
 #### 1-min
 
 ![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-1.png)
 
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-3d-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-dist-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-pc1-jitter-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-pc2-jitter-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-pc3-jitter-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-dist-line-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-pc1-line-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-pc2-line-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-pc3-line-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-13-1.png)
+
 ![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-34-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-42-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-45-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-46-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-47-1.png)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-load-1.png)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-avghr-1min-var-1.png)
+
+<details>
+
+<summary>
+
+<b>PC1 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(214,216,225); color:black; text-align:right;">
+
++0.27
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,228,251); color:black; text-align:right;">
+
+-0.25
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,228,251); color:black; text-align:right;">
+
+-0.25
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(213,219,227); color:black; text-align:right;">
+
++0.25
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(213,219,227); color:black; text-align:right;">
+
++0.25
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,221,228); color:black; text-align:right;">
+
++0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,221,228); color:black; text-align:right;">
+
++0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,230,251); color:black; text-align:right;">
+
+-0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,230,251); color:black; text-align:right;">
+
+-0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,230,251); color:black; text-align:right;">
+
+-0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,233,251); color:black; text-align:right;">
+
+-0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(224,234,251); color:black; text-align:right;">
+
+-0.20
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,228,234); color:black; text-align:right;">
+
++0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,228,234); color:black; text-align:right;">
+
++0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(225,235,252); color:black; text-align:right;">
+
+-0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(227,236,252); color:black; text-align:right;">
+
+-0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(227,236,252); color:black; text-align:right;">
+
+-0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(229,237,252); color:black; text-align:right;">
+
+-0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(229,237,252); color:black; text-align:right;">
+
+-0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(230,238,252); color:black; text-align:right;">
+
+-0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(236,242,253); color:black; text-align:right;">
+
+-0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(236,242,253); color:black; text-align:right;">
+
+-0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(241,245,253); color:black; text-align:right;">
+
+-0.09
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,246,248); color:black; text-align:right;">
+
++0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC2 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(217,209,219); color:black; text-align:right;">
+
++0.32
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,211,220); color:black; text-align:right;">
+
++0.31
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,211,220); color:black; text-align:right;">
+
++0.31
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,212,221); color:black; text-align:right;">
+
++0.30
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(211,225,250); color:black; text-align:right;">
+
+-0.28
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(215,215,224); color:black; text-align:right;">
+
++0.28
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(224,234,251); color:black; text-align:right;">
+
+-0.20
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(224,234,251); color:black; text-align:right;">
+
+-0.20
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(224,234,251); color:black; text-align:right;">
+
+-0.20
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,228,234); color:black; text-align:right;">
+
++0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(225,235,252); color:black; text-align:right;">
+
+-0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(225,235,252); color:black; text-align:right;">
+
+-0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(209,229,235); color:black; text-align:right;">
+
++0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(209,229,235); color:black; text-align:right;">
+
++0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(229,237,252); color:black; text-align:right;">
+
+-0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(236,242,253); color:black; text-align:right;">
+
+-0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(236,242,253); color:black; text-align:right;">
+
+-0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,239,243); color:black; text-align:right;">
+
++0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(238,243,253); color:black; text-align:right;">
+
+-0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(239,244,253); color:black; text-align:right;">
+
+-0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC3 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(225,189,203); color:black; text-align:right;">
+
++0.46
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,195,208); color:black; text-align:right;">
+
++0.42
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,196,209); color:black; text-align:right;">
+
++0.41
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,196,209); color:black; text-align:right;">
+
++0.41
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(221,231,251); color:black; text-align:right;">
+
+-0.22
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(211,225,231); color:black; text-align:right;">
+
++0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,231,236); color:black; text-align:right;">
+
++0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(208,232,237); color:black; text-align:right;">
+
++0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,236,240); color:black; text-align:right;">
+
++0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(241,245,253); color:black; text-align:right;">
+
+-0.09
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(243,246,254); color:black; text-align:right;">
+
+-0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC4 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(220,201,212); color:black; text-align:right;">
+
++0.38
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,216,249); color:black; text-align:right;">
+
+-0.36
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,219,249); color:black; text-align:right;">
+
+-0.34
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(213,219,227); color:black; text-align:right;">
+
++0.25
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,221,228); color:black; text-align:right;">
+
++0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(212,221,228); color:black; text-align:right;">
+
++0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,230,251); color:black; text-align:right;">
+
+-0.23
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(211,224,230); color:black; text-align:right;">
+
++0.22
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(222,233,251); color:black; text-align:right;">
+
+-0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(225,235,252); color:black; text-align:right;">
+
+-0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,228,234); color:black; text-align:right;">
+
++0.19
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(209,229,235); color:black; text-align:right;">
+
++0.18
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(230,238,252); color:black; text-align:right;">
+
+-0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(232,239,252); color:black; text-align:right;">
+
+-0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(232,239,252); color:black; text-align:right;">
+
+-0.15
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,236,240); color:black; text-align:right;">
+
++0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(236,242,253); color:black; text-align:right;">
+
+-0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,239,243); color:black; text-align:right;">
+
++0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(241,245,253); color:black; text-align:right;">
+
+-0.09
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(204,242,245); color:black; text-align:right;">
+
++0.09
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC5 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(227,184,199); color:black; text-align:right;">
+
++0.50
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(183,206,247); color:black; text-align:right;">
+
+-0.46
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(204,220,249); color:black; text-align:right;">
+
+-0.33
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,212,221); color:black; text-align:right;">
+
++0.30
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(210,224,250); color:black; text-align:right;">
+
+-0.29
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(214,216,225); color:black; text-align:right;">
+
++0.27
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(221,231,251); color:black; text-align:right;">
+
+-0.22
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(230,238,252); color:black; text-align:right;">
+
+-0.16
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(233,240,253); color:black; text-align:right;">
+
+-0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(236,242,253); color:black; text-align:right;">
+
+-0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(243,246,254); color:black; text-align:right;">
+
+-0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,246,248); color:black; text-align:right;">
+
++0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC6 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(177,201,246); color:black; text-align:right;">
+
+-0.50
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(177,201,246); color:black; text-align:right;">
+
+-0.50
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(193,212,248); color:black; text-align:right;">
+
+-0.40
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(213,218,226); color:black; text-align:right;">
+
++0.26
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(211,225,231); color:black; text-align:right;">
+
++0.21
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(224,234,251); color:black; text-align:right;">
+
+-0.20
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(229,237,252); color:black; text-align:right;">
+
+-0.17
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,239,243); color:black; text-align:right;">
+
++0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(238,243,253); color:black; text-align:right;">
+
+-0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(239,244,253); color:black; text-align:right;">
+
+-0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(243,246,254); color:black; text-align:right;">
+
+-0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(244,248,254); color:black; text-align:right;">
+
+-0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,246,248); color:black; text-align:right;">
+
++0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,248,249); color:black; text-align:right;">
+
++0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
+-0.00
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC7 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(180,204,246); color:black; text-align:right;">
+
+-0.48
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(220,201,212); color:black; text-align:right;">
+
++0.38
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(218,206,217); color:black; text-align:right;">
+
++0.34
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,221,249); color:black; text-align:right;">
+
+-0.32
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,221,249); color:black; text-align:right;">
+
+-0.32
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(216,212,221); color:black; text-align:right;">
+
++0.30
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(213,226,250); color:black; text-align:right;">
+
+-0.27
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(207,235,239); color:black; text-align:right;">
+
++0.14
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,236,240); color:black; text-align:right;">
+
++0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,236,240); color:black; text-align:right;">
+
++0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,241,244); color:black; text-align:right;">
+
++0.10
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(241,245,253); color:black; text-align:right;">
+
+-0.09
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(202,246,248); color:black; text-align:right;">
+
++0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(247,250,254); color:black; text-align:right;">
+
+-0.05
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
+-0.00
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+<details>
+
+<summary>
+
+<b>PC8 — Sorted Loadings</b>
+</summary>
+
+<table style="border-collapse:collapse; font-size:12px;">
+
+<tr>
+
+<th style="padding:4px 8px;">
+
+Rank
+</th>
+
+<th style="padding:4px 8px;">
+
+Variable
+</th>
+
+<th style="padding:4px 8px;">
+
+Loading
+</th>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+1
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_trev_1_num
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(159,189,244); color:white; text-align:right;">
+
+-0.62
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+2
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(190,210,248); color:black; text-align:right;">
+
+-0.42
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+3
+</td>
+
+<td style="padding:2px 8px;">
+
+SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(191,211,248); color:black; text-align:right;">
+
+-0.41
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+4
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_n_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(219,204,215); color:black; text-align:right;">
+
++0.36
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+5
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_10
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(218,229,251); color:black; text-align:right;">
+
+-0.24
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+6
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_mean_longstretch1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(235,241,253); color:black; text-align:right;">
+
+-0.13
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+7
+</td>
+
+<td style="padding:2px 8px;">
+
+IN_AutoMutualInfoStats_40_gaussian_fmmi
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(206,238,242); color:black; text-align:right;">
+
++0.12
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+8
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_TransitionMatrix_3ac_sumdiagcov
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(238,243,253); color:black; text-align:right;">
+
+-0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+9
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_FirstMin_ac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(205,239,243); color:black; text-align:right;">
+
++0.11
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+10
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_HistogramMode_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(243,246,254); color:black; text-align:right;">
+
+-0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+11
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean1_tauresrat
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,244,246); color:black; text-align:right;">
+
++0.08
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+12
+</td>
+
+<td style="padding:2px 8px;">
+
+min
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+13
+</td>
+
+<td style="padding:2px 8px;">
+
+PD_PeriodicityWang_th0_01
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+14
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_Embed2_Dist_tau_d_expfit_meandiff
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(203,245,247); color:black; text-align:right;">
+
++0.07
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+15
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_OutlierInclude_p_001_mdrmd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(246,249,254); color:black; text-align:right;">
+
+-0.06
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+16
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_f1ecac
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+17
+</td>
+
+<td style="padding:2px 8px;">
+
+permen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,249,251); color:black; text-align:right;">
+
++0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+18
+</td>
+
+<td style="padding:2px 8px;">
+
+cv
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(249,251,254); color:black; text-align:right;">
+
+-0.04
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+19
+</td>
+
+<td style="padding:2px 8px;">
+
+FC_LocalSimple_mean3_stderr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+20
+</td>
+
+<td style="padding:2px 8px;">
+
+sd
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+21
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Spread_Std
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(250,252,254); color:black; text-align:right;">
+
+-0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+22
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_BinaryStats_diff_longstretch0
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(201,251,252); color:black; text-align:right;">
+
++0.03
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+23
+</td>
+
+<td style="padding:2px 8px;">
+
+MD_hrv_classic_pnn40
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(200,252,253); color:black; text-align:right;">
+
++0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+24
+</td>
+
+<td style="padding:2px 8px;">
+
+SB_MotifThree_quantile_hh
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(252,253,255); color:black; text-align:right;">
+
+-0.02
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+25
+</td>
+
+<td style="padding:2px 8px;">
+
+CO_HistogramAMI_even_2_5
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+26
+</td>
+
+<td style="padding:2px 8px;">
+
+sampen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+27
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_centroid
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(253,254,255); color:black; text-align:right;">
+
+-0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+28
+</td>
+
+<td style="padding:2px 8px;">
+
+DN_Mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+29
+</td>
+
+<td style="padding:2px 8px;">
+
+mean
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,254,254); color:black; text-align:right;">
+
++0.01
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+30
+</td>
+
+<td style="padding:2px 8px;">
+
+median
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
+-0.00
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+31
+</td>
+
+<td style="padding:2px 8px;">
+
+iqr
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
+-0.00
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+32
+</td>
+
+<td style="padding:2px 8px;">
+
+max
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+33
+</td>
+
+<td style="padding:2px 8px;">
+
+apen
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
++0.00
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:2px 8px;">
+
+34
+</td>
+
+<td style="padding:2px 8px;">
+
+SP_Summaries_welch_rect_area_5_1
+</td>
+
+<td style="padding:2px 8px; background-color: rgb(199,255,255); color:black; text-align:right;">
+
+-0.00
+</td>
+
+</tr>
+
+</table>
+
+</details>
+
+</div>
+
+### 6.2.1 HRV vs avg_hr PCA Scores
+
+Do traditional HRV measures (RMSSD, SDNN) agree with the principal
+components derived from the 34-metric avg_hr PCA? We assess this via
+correlation heatmap, scatter plots with identity line (z-scored),
+Bland-Altman agreement plots, and ICC (two-way, agreement).
+
+<div class="panel-tabset">
+
+#### 5-min
+
+![](thew_analysis_1_files/figure-commonmark/hrv-pca-corr-5min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/hrv-pca-scatter-5min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/hrv-pca-ba-5min-1.png)
+
+| HRV Metric    | PC  |    ICC | 95% CI Lower | 95% CI Upper |
+|:--------------|:----|-------:|-------------:|-------------:|
+| mean_rmssd_ms | PC1 | -0.143 |       -0.233 |       -0.051 |
+| mean_rmssd_ms | PC2 |  0.077 |       -0.017 |        0.168 |
+| mean_rmssd_ms | PC3 | -0.227 |       -0.314 |       -0.137 |
+| mean_rmssd_ms | PC4 |  0.014 |       -0.079 |        0.107 |
+| mean_rmssd_ms | PC5 |  0.090 |       -0.003 |        0.181 |
+| mean_rmssd_ms | PC6 | -0.066 |       -0.158 |        0.028 |
+| mean_rmssd_ms | PC7 | -0.038 |       -0.130 |        0.056 |
+| mean_rmssd_ms | PC8 | -0.096 |       -0.188 |       -0.004 |
+| mean_sdnn_ms  | PC1 | -0.109 |       -0.200 |       -0.017 |
+| mean_sdnn_ms  | PC2 |  0.026 |       -0.067 |        0.118 |
+| mean_sdnn_ms  | PC3 | -0.388 |       -0.465 |       -0.306 |
+| mean_sdnn_ms  | PC4 | -0.016 |       -0.109 |        0.077 |
+| mean_sdnn_ms  | PC5 |  0.157 |        0.065 |        0.246 |
+| mean_sdnn_ms  | PC6 | -0.062 |       -0.154 |        0.031 |
+| mean_sdnn_ms  | PC7 | -0.083 |       -0.175 |        0.010 |
+| mean_sdnn_ms  | PC8 | -0.076 |       -0.168 |        0.017 |
+
+ICC (two-way, agreement) between z-scored HRV metrics and PC scores
+(5-min)
+
+#### 1-min
+
+![](thew_analysis_1_files/figure-commonmark/hrv-pca-corr-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/hrv-pca-scatter-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/hrv-pca-ba-1min-1.png)
+
+| HRV Metric    | PC  |    ICC | 95% CI Lower | 95% CI Upper |
+|:--------------|:----|-------:|-------------:|-------------:|
+| mean_rmssd_ms | PC1 |  0.211 |        0.121 |        0.298 |
+| mean_rmssd_ms | PC2 |  0.143 |        0.051 |        0.233 |
+| mean_rmssd_ms | PC3 | -0.196 |       -0.284 |       -0.105 |
+| mean_rmssd_ms | PC4 |  0.053 |       -0.041 |        0.145 |
+| mean_rmssd_ms | PC5 | -0.010 |       -0.103 |        0.083 |
+| mean_rmssd_ms | PC6 | -0.125 |       -0.216 |       -0.032 |
+| mean_rmssd_ms | PC7 |  0.141 |        0.049 |        0.231 |
+| mean_rmssd_ms | PC8 | -0.047 |       -0.139 |        0.046 |
+| mean_sdnn_ms  | PC1 |  0.210 |        0.119 |        0.297 |
+| mean_sdnn_ms  | PC2 |  0.319 |        0.233 |        0.400 |
+| mean_sdnn_ms  | PC3 | -0.281 |       -0.364 |       -0.193 |
+| mean_sdnn_ms  | PC4 |  0.045 |       -0.048 |        0.137 |
+| mean_sdnn_ms  | PC5 |  0.015 |       -0.078 |        0.108 |
+| mean_sdnn_ms  | PC6 | -0.148 |       -0.238 |       -0.055 |
+| mean_sdnn_ms  | PC7 |  0.156 |        0.064 |        0.245 |
+| mean_sdnn_ms  | PC8 | -0.038 |       -0.130 |        0.056 |
+
+ICC (two-way, agreement) between z-scored HRV metrics and PC scores
+(1-min)
+
+</div>
+
+### 6.2.2 SDNN vs −PC3: Sign-Flipped Agreement
+
+SDNN and PC3 appear anticorrelated. Flipping the sign of PC3 and
+comparing z-scored SDNN vs z(−PC3) via scatter (identity line) and
+Bland-Altman.
+
+<div class="panel-tabset">
+
+#### 5-min
+
+![](thew_analysis_1_files/figure-commonmark/sdnn-pc3-scatter-5min-1.png)
+
+    r = 0.387, p = 2.21e-17
+
+![](thew_analysis_1_files/figure-commonmark/sdnn-pc3-ba-5min-1.png)
+
+    Mean diff = 0.000, 95% LoA = [-2.170, 2.170]
+
+    ICC = 0.388 [0.306, 0.464]
+
+#### 1-min
+
+![](thew_analysis_1_files/figure-commonmark/sdnn-pc3-scatter-1min-1.png)
+
+    r = 0.280, p = 1.83e-09
+
+![](thew_analysis_1_files/figure-commonmark/sdnn-pc3-ba-1min-1.png)
+
+    Mean diff = 0.000, 95% LoA = [-2.352, 2.352]
+
+    ICC = 0.280 [0.192, 0.364]
 
 </div>
 
@@ -907,6 +11993,8 @@ Full pairwise results (click to expand)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-top-5min-1.png)
 
+![](thew_analysis_1_files/figure-commonmark/pca-top-5min-13-1.png)
+
 ![](thew_analysis_1_files/figure-commonmark/pca-top-5min-34-1.png)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-top-5min-load-1.png)
@@ -916,6 +12004,8 @@ Full pairwise results (click to expand)
 #### 1-min
 
 ![](thew_analysis_1_files/figure-commonmark/pca-top-1min-1.png)
+
+![](thew_analysis_1_files/figure-commonmark/pca-top-1min-13-1.png)
 
 ![](thew_analysis_1_files/figure-commonmark/pca-top-1min-34-1.png)
 

@@ -25,6 +25,8 @@ library(here)
 library(knitr)
 library(broom)
 library(scales)
+library(irr)
+library(plotly)
 
 theme_set(theme_minimal(base_size = 12))
 set.seed(42)
@@ -96,10 +98,10 @@ metrics_5min <- prepare_data(metrics_5min)
 
 # Color palette for the 4 groups
 condition4_colors <- c(
-  "Healthy"      = "#4DAF4A",
-  "CAD"          = "#377EB8",
-  "CAD_Diabetes" = "#FF7F00",
-  "ESRD"         = "#E41A1C"
+  "Healthy"      = "#009E73",
+  "CAD"          = "#56B4E9",
+  "CAD_Diabetes" = "#CC79A7",
+  "ESRD"         = "#D55E00"
 )
 ```
 
@@ -237,6 +239,251 @@ pivot_metrics_long(metrics_1min, hrv_cols) %>%
 
 :::
 
+## 3.5 Correlation Heatmap
+
+::: {.panel-tabset}
+
+### 5-min
+
+```{r corr-heatmap-5min, fig.width=14, fig.height=12}
+# Compute correlation matrix
+cor_mat <- cor(metrics_5min %>% select(all_of(all_metric_cols)),
+               use = "pairwise.complete.obs")
+
+# Compute p-values via cor.test
+n_cols <- ncol(cor_mat)
+p_mat <- matrix(NA, n_cols, n_cols,
+                dimnames = list(colnames(cor_mat), colnames(cor_mat)))
+for (i in 1:(n_cols - 1)) {
+  for (j in (i + 1):n_cols) {
+    test <- cor.test(metrics_5min[[colnames(cor_mat)[i]]],
+                     metrics_5min[[colnames(cor_mat)[j]]])
+    p_mat[i, j] <- test$p.value
+    p_mat[j, i] <- test$p.value
+  }
+}
+
+# Build long-form data for ggplot
+cor_df <- as.data.frame(as.table(cor_mat)) %>%
+  rename(var1 = Var1, var2 = Var2, r = Freq) %>%
+  mutate(
+    p = map2_dbl(var1, var2, ~ p_mat[as.character(.x), as.character(.y)]),
+    label = sprintf("%.2f", r),
+    label = if_else(!is.na(p) & p < 0.05, paste0(label, "*"), label),
+    var1 = str_remove(as.character(var1), "^avg_hr_"),
+    var2 = str_remove(as.character(var2), "^avg_hr_")
+  )
+
+ggplot(cor_df, aes(x = var1, y = var2, fill = r)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label), size = 2) +
+  scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "Feature Correlation Heatmap (5-min)",
+       x = NULL, y = NULL, fill = "r") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
+        axis.text.y = element_text(size = 6))
+```
+
+### 1-min
+
+```{r corr-heatmap-1min, fig.width=14, fig.height=12}
+# Compute correlation matrix
+cor_mat <- cor(metrics_1min %>% select(all_of(all_metric_cols)),
+               use = "pairwise.complete.obs")
+
+# Compute p-values via cor.test
+n_cols <- ncol(cor_mat)
+p_mat <- matrix(NA, n_cols, n_cols,
+                dimnames = list(colnames(cor_mat), colnames(cor_mat)))
+for (i in 1:(n_cols - 1)) {
+  for (j in (i + 1):n_cols) {
+    test <- cor.test(metrics_1min[[colnames(cor_mat)[i]]],
+                     metrics_1min[[colnames(cor_mat)[j]]])
+    p_mat[i, j] <- test$p.value
+    p_mat[j, i] <- test$p.value
+  }
+}
+
+# Build long-form data for ggplot
+cor_df <- as.data.frame(as.table(cor_mat)) %>%
+  rename(var1 = Var1, var2 = Var2, r = Freq) %>%
+  mutate(
+    p = map2_dbl(var1, var2, ~ p_mat[as.character(.x), as.character(.y)]),
+    label = sprintf("%.2f", r),
+    label = if_else(!is.na(p) & p < 0.05, paste0(label, "*"), label),
+    var1 = str_remove(as.character(var1), "^avg_hr_"),
+    var2 = str_remove(as.character(var2), "^avg_hr_")
+  )
+
+ggplot(cor_df, aes(x = var1, y = var2, fill = r)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label), size = 2) +
+  scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "Feature Correlation Heatmap (1-min)",
+       x = NULL, y = NULL, fill = "r") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
+        axis.text.y = element_text(size = 6))
+```
+
+:::
+
+### 3.6 Permutation Entropy vs CV Scatter
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r permen-cv-scatter-5min, fig.width=8, fig.height=6}
+ggplot(metrics_5min, aes(x = avg_hr_cv, y = avg_hr_permen, color = condition4)) +
+  geom_point(size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(
+    title = "Permutation Entropy vs CV (5-min)",
+    x = "CV", y = "Permutation Entropy",
+    color = "Condition"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+#### 1-min
+
+```{r permen-cv-scatter-1min, fig.width=8, fig.height=6}
+ggplot(metrics_1min, aes(x = avg_hr_cv, y = avg_hr_permen, color = condition4)) +
+  geom_point(size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(
+    title = "Permutation Entropy vs CV (1-min)",
+    x = "CV", y = "Permutation Entropy",
+    color = "Condition"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+:::
+
+### 3.7 SDNN & RMSSD by Condition
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r sdnn-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition4, y = mean_sdnn_ms, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "SDNN by Condition (5-min)", x = NULL, y = "SDNN (ms)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r rmssd-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition4, y = mean_rmssd_ms, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "RMSSD by Condition (5-min)", x = NULL, y = "RMSSD (ms)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r permen-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition4, y = avg_hr_permen, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "Permutation Entropy by Condition (5-min)", x = NULL, y = "Permutation Entropy", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r sd-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition4, y = avg_hr_sd, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "SD by Condition (5-min)", x = NULL, y = "SD (avg HR)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r cv-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition4, y = avg_hr_cv, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "CV by Condition (5-min)", x = NULL, y = "CV (avg HR)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r mean-hr-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition4, y = avg_hr_mean, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "Mean HR by Condition (5-min)", x = NULL, y = "Mean HR (bpm)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r median-hr-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition4, y = avg_hr_median, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "Median HR by Condition (5-min)", x = NULL, y = "Median HR (bpm)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+#### 1-min
+
+```{r sdnn-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition4, y = mean_sdnn_ms, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "SDNN by Condition (1-min)", x = NULL, y = "SDNN (ms)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r rmssd-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition4, y = mean_rmssd_ms, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "RMSSD by Condition (1-min)", x = NULL, y = "RMSSD (ms)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r permen-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition4, y = avg_hr_permen, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "Permutation Entropy by Condition (1-min)", x = NULL, y = "Permutation Entropy", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r sd-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition4, y = avg_hr_sd, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "SD by Condition (1-min)", x = NULL, y = "SD (avg HR)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r cv-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition4, y = avg_hr_cv, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "CV by Condition (1-min)", x = NULL, y = "CV (avg HR)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r mean-hr-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition4, y = avg_hr_mean, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "Mean HR by Condition (1-min)", x = NULL, y = "Mean HR (bpm)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r median-hr-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition4, y = avg_hr_median, color = condition4)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition4_colors) +
+  labs(title = "Median HR by Condition (1-min)", x = NULL, y = "Median HR (bpm)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+:::
 
 ## 4 Omnibus Significance Tests (ANOVA & Kruskal-Wallis)
 
@@ -507,6 +754,18 @@ run_pca_analysis <- function(df, metric_cols, title_prefix = "") {
     ) +
     theme(legend.position = "bottom")
 
+  # --- Plot 1b: PC1 vs PC3 ---
+  p13 <- ggplot(scores, aes(x = PC1, y = PC3, color = condition4)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition4_colors) +
+    labs(
+      title = paste(title_prefix, "PC1 vs PC3"),
+      x = sprintf("PC1 (%.1f%%)", var_pct[1]),
+      y = sprintf("PC3 (%.1f%%)", var_pct[3]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
   # --- Plot 2: PC3 vs PC4 ---
   p34 <- ggplot(scores, aes(x = PC3, y = PC4, color = condition4)) +
     geom_point(size = 2.5, alpha = 0.7) +
@@ -515,6 +774,51 @@ run_pca_analysis <- function(df, metric_cols, title_prefix = "") {
       title = paste(title_prefix, "PC3 vs PC4"),
       x = sprintf("PC3 (%.1f%%)", var_pct[3]),
       y = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  # --- PC4 pair plots ---
+  p42 <- ggplot(scores, aes(x = PC4, y = PC2, color = condition4)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition4_colors) +
+    labs(
+      title = paste(title_prefix, "PC4 vs PC2"),
+      x = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      y = sprintf("PC2 (%.1f%%)", var_pct[2]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  p45 <- ggplot(scores, aes(x = PC4, y = PC5, color = condition4)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition4_colors) +
+    labs(
+      title = paste(title_prefix, "PC4 vs PC5"),
+      x = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      y = sprintf("PC5 (%.1f%%)", var_pct[5]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  p46 <- ggplot(scores, aes(x = PC4, y = PC6, color = condition4)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition4_colors) +
+    labs(
+      title = paste(title_prefix, "PC4 vs PC6"),
+      x = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      y = sprintf("PC6 (%.1f%%)", var_pct[6]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  p47 <- ggplot(scores, aes(x = PC4, y = PC7, color = condition4)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition4_colors) +
+    labs(
+      title = paste(title_prefix, "PC4 vs PC7"),
+      x = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      y = sprintf("PC7 (%.1f%%)", var_pct[7]),
       color = "Condition"
     ) +
     theme(legend.position = "bottom")
@@ -531,6 +835,8 @@ run_pca_analysis <- function(df, metric_cols, title_prefix = "") {
 
   p_load <- ggplot(loadings_df, aes(x = PC, y = variable, fill = loading)) +
     geom_tile() +
+    geom_text(aes(label = sprintf("%.3f", loading)),
+              size = 2.2, color = ifelse(abs(loadings_df$loading) > 0.4, "white", "black")) +
     scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
                          midpoint = 0) +
     scale_x_discrete(labels = pc_lut) +
@@ -559,7 +865,76 @@ run_pca_analysis <- function(df, metric_cols, title_prefix = "") {
     ) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-  list(p12 = p12, p34 = p34, p_load = p_load, p_var = p_var,
+  # --- 3D interactive plot: PC1 × PC2 × PC3 ---
+  p3d <- plot_ly(scores, x = ~PC1, y = ~PC2, z = ~PC3,
+                 color = ~condition4, colors = condition4_colors,
+                 type = "scatter3d", mode = "markers",
+                 marker = list(size = 4, opacity = 0.7)) %>%
+    layout(
+      title = paste(title_prefix, "PC1 × PC2 × PC3"),
+      scene = list(
+        xaxis = list(title = sprintf("PC1 (%.1f%%)", var_pct[1])),
+        yaxis = list(title = sprintf("PC2 (%.1f%%)", var_pct[2])),
+        zaxis = list(title = sprintf("PC3 (%.1f%%)", var_pct[3]))
+      )
+    )
+
+  # --- PCA composite index: PC1 - PC2 - PC3 ---
+  scores <- scores %>%
+    mutate(pca_dist = PC1 - PC2 - PC3)
+
+  p_dist <- ggplot(scores, aes(x = condition4, y = pca_dist, color = condition4)) +
+    geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition4_colors) +
+    labs(
+      title = paste(title_prefix, "PCA Composite Index"),
+      x = NULL,
+      y = "PC1 - PC2 - PC3",
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  # By-condition jitter for individual PCs
+  make_pc_jitter <- function(y_var, y_label) {
+    ggplot(scores, aes(x = condition4, y = .data[[y_var]], color = condition4)) +
+      geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+      scale_color_manual(values = condition4_colors) +
+      labs(
+        title = paste(title_prefix, y_label),
+        x = NULL, y = y_label, color = "Condition"
+      ) +
+      theme(legend.position = "bottom")
+  }
+
+  p_pc1_jitter <- make_pc_jitter("PC1", "PC1")
+  p_pc2_jitter <- make_pc_jitter("PC2", "PC2")
+  p_pc3_jitter <- make_pc_jitter("PC3", "PC3")
+
+  # Helper for horizontal strip charts
+  make_pc_line <- function(x_var, x_label) {
+    ggplot(scores, aes(x = .data[[x_var]], y = 0, color = condition4)) +
+      geom_jitter(height = 0.3, width = 0, size = 2.5, alpha = 0.7) +
+      scale_color_manual(values = condition4_colors) +
+      labs(
+        title = paste(title_prefix, x_label, "(all conditions)"),
+        x = x_label, y = NULL, color = "Condition"
+      ) +
+      theme(legend.position = "bottom",
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank())
+  }
+
+  p_dist_line <- make_pc_line("pca_dist", "PC1 - PC2 - PC3")
+  p_pc1_line  <- make_pc_line("PC1", "PC1")
+  p_pc2_line  <- make_pc_line("PC2", "PC2")
+  p_pc3_line  <- make_pc_line("PC3", "PC3")
+
+  list(p12 = p12, p13 = p13, p34 = p34,
+       p42 = p42, p45 = p45, p46 = p46, p47 = p47,
+       p3d = p3d, p_dist = p_dist, p_dist_line = p_dist_line,
+       p_pc1_jitter = p_pc1_jitter, p_pc2_jitter = p_pc2_jitter, p_pc3_jitter = p_pc3_jitter,
+       p_pc1_line = p_pc1_line, p_pc2_line = p_pc2_line, p_pc3_line = p_pc3_line,
+       p_load = p_load, p_var = p_var,
        pca_res = pca_res, scores = scores, n_na = n_na)
 }
 ```
@@ -573,6 +948,12 @@ run_pca_analysis <- function(df, metric_cols, title_prefix = "") {
 ```{r pca-all-5min, fig.width=10, fig.height=6}
 pca_all_5 <- run_pca_analysis(metrics_5min, all_metric_cols, "All Metrics —")
 pca_all_5$p12
+```
+
+```{r pca-all-5min-13, fig.width=10, fig.height=6}
+pca_all_5$p13
+ggsave("../results/figures/thew_pca_all_metrics_pc1_vs_pc3_5min.png",
+       pca_all_5$p13, width = 10, height = 6, dpi = 300)
 ```
 
 ```{r pca-all-5min-34, fig.width=10, fig.height=6}
@@ -592,6 +973,12 @@ pca_all_5$p_var
 ```{r pca-all-1min, fig.width=10, fig.height=6}
 pca_all_1 <- run_pca_analysis(metrics_1min, all_metric_cols, "All Metrics —")
 pca_all_1$p12
+```
+
+```{r pca-all-1min-13, fig.width=10, fig.height=6}
+pca_all_1$p13
+ggsave("../results/figures/thew_pca_all_metrics_pc1_vs_pc3_1min.png",
+       pca_all_1$p13, width = 10, height = 6, dpi = 300)
 ```
 
 ```{r pca-all-1min-34, fig.width=10, fig.height=6}
@@ -619,8 +1006,66 @@ pca_avghr_5 <- run_pca_analysis(metrics_5min, avg_hr_cols, "avg_hr —")
 pca_avghr_5$p12
 ```
 
+```{r pca-avghr-5min-3d, fig.width=10, fig.height=8}
+pca_avghr_5$p3d
+```
+
+```{r pca-avghr-5min-dist, fig.width=8, fig.height=5}
+pca_avghr_5$p_dist
+```
+
+```{r pca-avghr-5min-pc1-jitter, fig.width=8, fig.height=5}
+pca_avghr_5$p_pc1_jitter
+```
+
+```{r pca-avghr-5min-pc2-jitter, fig.width=8, fig.height=5}
+pca_avghr_5$p_pc2_jitter
+```
+
+```{r pca-avghr-5min-pc3-jitter, fig.width=8, fig.height=5}
+pca_avghr_5$p_pc3_jitter
+```
+
+```{r pca-avghr-5min-dist-line, fig.width=10, fig.height=3}
+pca_avghr_5$p_dist_line
+```
+
+```{r pca-avghr-5min-pc1-line, fig.width=10, fig.height=3}
+pca_avghr_5$p_pc1_line
+```
+
+```{r pca-avghr-5min-pc2-line, fig.width=10, fig.height=3}
+pca_avghr_5$p_pc2_line
+```
+
+```{r pca-avghr-5min-pc3-line, fig.width=10, fig.height=3}
+pca_avghr_5$p_pc3_line
+```
+
+```{r pca-avghr-5min-13, fig.width=10, fig.height=6}
+pca_avghr_5$p13
+ggsave("../results/figures/thew_pca_avghr_metrics_pc1_vs_pc3_5min.png",
+       pca_avghr_5$p13, width = 10, height = 6, dpi = 300)
+```
+
 ```{r pca-avghr-5min-34, fig.width=10, fig.height=6}
 pca_avghr_5$p34
+```
+
+```{r pca-avghr-5min-42, fig.width=10, fig.height=6}
+pca_avghr_5$p42
+```
+
+```{r pca-avghr-5min-45, fig.width=10, fig.height=6}
+pca_avghr_5$p45
+```
+
+```{r pca-avghr-5min-46, fig.width=10, fig.height=6}
+pca_avghr_5$p46
+```
+
+```{r pca-avghr-5min-47, fig.width=10, fig.height=6}
+pca_avghr_5$p47
 ```
 
 ```{r pca-avghr-5min-load, fig.width=10, fig.height=10}
@@ -631,6 +1076,50 @@ pca_avghr_5$p_load
 pca_avghr_5$p_var
 ```
 
+```{r pca-avghr-5min-sorted-loadings, results='asis'}
+# Sorted loadings per PC with heatmap-style colored cells
+n_pcs_show <- min(8, ncol(pca_avghr_5$pca_res$rotation))
+load_mat <- pca_avghr_5$pca_res$rotation[, 1:n_pcs_show]
+
+sorted_loadings_5 <- map_dfr(1:n_pcs_show, function(k) {
+  vals <- load_mat[, k]
+  ord <- order(abs(vals), decreasing = TRUE)
+  tibble(
+    PC   = paste0("PC", k),
+    Rank = seq_along(ord),
+    Variable = str_remove(names(vals)[ord], "^avg_hr_"),
+    Loading  = round(vals[ord], 2)
+  )
+})
+
+# Color-code cells: cornflowerblue (negative) → white (0) → mediumvioletred (positive)
+loading_color <- function(x) {
+  # Map loading [-1, 1] to RGB
+  r <- ifelse(x >= 0, 0.78 + 0.22 * x, 0.39 + 0.61 * (1 + x))
+  g <- ifelse(x >= 0, 0.44 + 0.56 * (1 - x), 0.58 + 0.42 * (1 + x))
+  b <- ifelse(x >= 0, 0.56 + 0.44 * (1 - x), 0.93 + 0.07 * (1 + x))
+  sprintf("background-color: rgb(%.0f,%.0f,%.0f);", r*255, g*255, b*255)
+}
+
+# Build one table per PC
+for (pc in paste0("PC", 1:n_pcs_show)) {
+  pc_df <- sorted_loadings_5 %>% filter(PC == !!pc) %>% select(Rank, Variable, Loading)
+
+  # Create styled HTML table
+  cat(sprintf("\n<details><summary><b>%s — Sorted Loadings</b></summary>\n\n", pc))
+  cat("<table style='border-collapse:collapse; font-size:12px;'>\n")
+  cat("<tr><th style='padding:4px 8px;'>Rank</th><th style='padding:4px 8px;'>Variable</th><th style='padding:4px 8px;'>Loading</th></tr>\n")
+  for (i in seq_len(nrow(pc_df))) {
+    bg <- loading_color(pc_df$Loading[i])
+    # Use dark text for light backgrounds, light text for dark backgrounds
+    txt_col <- ifelse(abs(pc_df$Loading[i]) > 0.6, "color:white;", "color:black;")
+    cat(sprintf("<tr><td style='padding:2px 8px;'>%d</td><td style='padding:2px 8px;'>%s</td><td style='padding:2px 8px; %s %s text-align:right;'>%+.2f</td></tr>\n",
+                pc_df$Rank[i], pc_df$Variable[i], bg, txt_col, pc_df$Loading[i]))
+  }
+  cat("</table>\n\n</details>\n")
+}
+```
+
 #### 1-min
 
 ```{r pca-avghr-1min, fig.width=10, fig.height=6}
@@ -638,8 +1127,66 @@ pca_avghr_1 <- run_pca_analysis(metrics_1min, avg_hr_cols, "avg_hr —")
 pca_avghr_1$p12
 ```
 
+```{r pca-avghr-1min-3d, fig.width=10, fig.height=8}
+pca_avghr_1$p3d
+```
+
+```{r pca-avghr-1min-dist, fig.width=8, fig.height=5}
+pca_avghr_1$p_dist
+```
+
+```{r pca-avghr-1min-pc1-jitter, fig.width=8, fig.height=5}
+pca_avghr_1$p_pc1_jitter
+```
+
+```{r pca-avghr-1min-pc2-jitter, fig.width=8, fig.height=5}
+pca_avghr_1$p_pc2_jitter
+```
+
+```{r pca-avghr-1min-pc3-jitter, fig.width=8, fig.height=5}
+pca_avghr_1$p_pc3_jitter
+```
+
+```{r pca-avghr-1min-dist-line, fig.width=10, fig.height=3}
+pca_avghr_1$p_dist_line
+```
+
+```{r pca-avghr-1min-pc1-line, fig.width=10, fig.height=3}
+pca_avghr_1$p_pc1_line
+```
+
+```{r pca-avghr-1min-pc2-line, fig.width=10, fig.height=3}
+pca_avghr_1$p_pc2_line
+```
+
+```{r pca-avghr-1min-pc3-line, fig.width=10, fig.height=3}
+pca_avghr_1$p_pc3_line
+```
+
+```{r pca-avghr-1min-13, fig.width=10, fig.height=6}
+pca_avghr_1$p13
+ggsave("../results/figures/thew_pca_avghr_metrics_pc1_vs_pc3_1min.png",
+       pca_avghr_1$p13, width = 10, height = 6, dpi = 300)
+```
+
 ```{r pca-avghr-1min-34, fig.width=10, fig.height=6}
 pca_avghr_1$p34
+```
+
+```{r pca-avghr-1min-42, fig.width=10, fig.height=6}
+pca_avghr_1$p42
+```
+
+```{r pca-avghr-1min-45, fig.width=10, fig.height=6}
+pca_avghr_1$p45
+```
+
+```{r pca-avghr-1min-46, fig.width=10, fig.height=6}
+pca_avghr_1$p46
+```
+
+```{r pca-avghr-1min-47, fig.width=10, fig.height=6}
+pca_avghr_1$p47
 ```
 
 ```{r pca-avghr-1min-load, fig.width=10, fig.height=10}
@@ -648,6 +1195,402 @@ pca_avghr_1$p_load
 
 ```{r pca-avghr-1min-var, fig.width=8, fig.height=4}
 pca_avghr_1$p_var
+```
+
+```{r pca-avghr-1min-sorted-loadings, results='asis'}
+n_pcs_show_1 <- min(8, ncol(pca_avghr_1$pca_res$rotation))
+load_mat_1 <- pca_avghr_1$pca_res$rotation[, 1:n_pcs_show_1]
+
+sorted_loadings_1 <- map_dfr(1:n_pcs_show_1, function(k) {
+  vals <- load_mat_1[, k]
+  ord <- order(abs(vals), decreasing = TRUE)
+  tibble(
+    PC   = paste0("PC", k),
+    Rank = seq_along(ord),
+    Variable = str_remove(names(vals)[ord], "^avg_hr_"),
+    Loading  = round(vals[ord], 2)
+  )
+})
+
+for (pc in paste0("PC", 1:n_pcs_show_1)) {
+  pc_df <- sorted_loadings_1 %>% filter(PC == !!pc) %>% select(Rank, Variable, Loading)
+
+  cat(sprintf("\n<details><summary><b>%s — Sorted Loadings</b></summary>\n\n", pc))
+  cat("<table style='border-collapse:collapse; font-size:12px;'>\n")
+  cat("<tr><th style='padding:4px 8px;'>Rank</th><th style='padding:4px 8px;'>Variable</th><th style='padding:4px 8px;'>Loading</th></tr>\n")
+  for (i in seq_len(nrow(pc_df))) {
+    bg <- loading_color(pc_df$Loading[i])
+    txt_col <- ifelse(abs(pc_df$Loading[i]) > 0.6, "color:white;", "color:black;")
+    cat(sprintf("<tr><td style='padding:2px 8px;'>%d</td><td style='padding:2px 8px;'>%s</td><td style='padding:2px 8px; %s %s text-align:right;'>%+.2f</td></tr>\n",
+                pc_df$Rank[i], pc_df$Variable[i], bg, txt_col, pc_df$Loading[i]))
+  }
+  cat("</table>\n\n</details>\n")
+}
+```
+
+:::
+
+### 6.2.1 HRV vs avg_hr PCA Scores
+
+Do traditional HRV measures (RMSSD, SDNN) agree with the principal components
+derived from the 34-metric avg_hr PCA? We assess this via correlation heatmap,
+scatter plots with identity line (z-scored), Bland-Altman agreement plots, and
+ICC (two-way, agreement).
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r hrv-pca-corr-5min, fig.width=10, fig.height=3}
+# Join HRV metrics to PCA scores
+hrv_pc_5 <- pca_avghr_5$scores %>%
+  left_join(metrics_5min %>% select(id, mean_rmssd_ms, mean_sdnn_ms), by = "id")
+
+# Compute correlation matrix (2 HRV rows x 8 PC columns)
+hrv_names <- c("mean_rmssd_ms", "mean_sdnn_ms")
+pc_names <- paste0("PC", 1:8)
+cor_mat_5 <- cor(hrv_pc_5[hrv_names], hrv_pc_5[pc_names], use = "pairwise.complete.obs")
+
+# Compute p-values
+p_mat_5 <- matrix(NA, length(hrv_names), length(pc_names),
+                  dimnames = list(hrv_names, pc_names))
+for (i in seq_along(hrv_names)) {
+  for (j in seq_along(pc_names)) {
+    test <- cor.test(hrv_pc_5[[hrv_names[i]]], hrv_pc_5[[pc_names[j]]])
+    p_mat_5[i, j] <- test$p.value
+  }
+}
+
+# Long-form for ggplot
+cor_df_5 <- as.data.frame(as.table(cor_mat_5)) %>%
+  rename(hrv = Var1, pc = Var2, r = Freq) %>%
+  mutate(
+    p = map2_dbl(hrv, pc, ~ p_mat_5[as.character(.x), as.character(.y)]),
+    label = sprintf("%.2f", r),
+    label = if_else(!is.na(p) & p < 0.05, paste0(label, "*"), label)
+  )
+
+ggplot(cor_df_5, aes(x = pc, y = hrv, fill = r)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label), size = 4) +
+  scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "HRV vs avg_hr PCA Scores — Correlation (5-min)",
+       x = NULL, y = NULL, fill = "r") +
+  theme_minimal()
+```
+
+```{r hrv-pca-scatter-5min, fig.width=16, fig.height=6}
+# Z-score both HRV and PC columns
+hrv_pc_5z <- hrv_pc_5 %>%
+  mutate(across(all_of(c(hrv_names, pc_names)), ~ scale(.x)[, 1]))
+
+# Pivot to long form for faceted scatter
+scatter_df_5 <- hrv_pc_5z %>%
+  pivot_longer(all_of(hrv_names), names_to = "hrv_metric", values_to = "hrv_z") %>%
+  pivot_longer(all_of(pc_names), names_to = "pc", values_to = "pc_z")
+
+ggplot(scatter_df_5, aes(x = pc_z, y = hrv_z)) +
+  geom_point(alpha = 0.4, size = 1) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  facet_grid(hrv_metric ~ pc, scales = "free") +
+  labs(title = "Scatter: z(HRV) vs z(PC) with Identity Line (5-min)",
+       x = "PC score (z)", y = "HRV metric (z)") +
+  theme_minimal(base_size = 9)
+```
+
+```{r hrv-pca-ba-5min, fig.width=16, fig.height=6}
+# Bland-Altman data
+ba_df_5 <- scatter_df_5 %>%
+  mutate(
+    ba_mean = (hrv_z + pc_z) / 2,
+    ba_diff = hrv_z - pc_z
+  )
+
+ba_limits_5 <- ba_df_5 %>%
+  group_by(hrv_metric, pc) %>%
+  summarise(
+    mean_diff = mean(ba_diff, na.rm = TRUE),
+    sd_diff   = sd(ba_diff, na.rm = TRUE),
+    upper     = mean_diff + 1.96 * sd_diff,
+    lower     = mean_diff - 1.96 * sd_diff,
+    .groups = "drop"
+  )
+
+ggplot(ba_df_5, aes(x = ba_mean, y = ba_diff)) +
+  geom_point(alpha = 0.4, size = 1) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "grey50") +
+  geom_hline(data = ba_limits_5, aes(yintercept = mean_diff),
+             linetype = "dashed", color = "blue") +
+  geom_hline(data = ba_limits_5, aes(yintercept = upper),
+             linetype = "dotted", color = "red") +
+  geom_hline(data = ba_limits_5, aes(yintercept = lower),
+             linetype = "dotted", color = "red") +
+  facet_grid(hrv_metric ~ pc, scales = "free") +
+  labs(title = "Bland-Altman: z(HRV) vs z(PC) (5-min)",
+       x = "Mean of z-scores", y = "Difference (HRV - PC)") +
+  theme_minimal(base_size = 9)
+```
+
+```{r hrv-pca-icc-5min}
+# ICC table
+icc_results_5 <- expand_grid(hrv = hrv_names, pc = pc_names) %>%
+  rowwise() %>%
+  mutate(
+    icc_obj = list({
+      d <- hrv_pc_5z %>% select(h = all_of(hrv), p = all_of(pc)) %>% drop_na()
+      irr::icc(d, model = "twoway", type = "agreement", unit = "single")
+    }),
+    icc_val   = icc_obj$value,
+    icc_lower = icc_obj$lbound,
+    icc_upper = icc_obj$ubound
+  ) %>%
+  ungroup() %>%
+  select(-icc_obj)
+
+kable(icc_results_5, digits = 3,
+      col.names = c("HRV Metric", "PC", "ICC", "95% CI Lower", "95% CI Upper"),
+      caption = "ICC (two-way, agreement) between z-scored HRV metrics and PC scores (5-min)")
+```
+
+#### 1-min
+
+```{r hrv-pca-corr-1min, fig.width=10, fig.height=3}
+# Join HRV metrics to PCA scores
+hrv_pc_1 <- pca_avghr_1$scores %>%
+  left_join(metrics_1min %>% select(id, mean_rmssd_ms, mean_sdnn_ms), by = "id")
+
+# Compute correlation matrix
+cor_mat_1 <- cor(hrv_pc_1[hrv_names], hrv_pc_1[pc_names], use = "pairwise.complete.obs")
+
+# Compute p-values
+p_mat_1 <- matrix(NA, length(hrv_names), length(pc_names),
+                  dimnames = list(hrv_names, pc_names))
+for (i in seq_along(hrv_names)) {
+  for (j in seq_along(pc_names)) {
+    test <- cor.test(hrv_pc_1[[hrv_names[i]]], hrv_pc_1[[pc_names[j]]])
+    p_mat_1[i, j] <- test$p.value
+  }
+}
+
+# Long-form for ggplot
+cor_df_1 <- as.data.frame(as.table(cor_mat_1)) %>%
+  rename(hrv = Var1, pc = Var2, r = Freq) %>%
+  mutate(
+    p = map2_dbl(hrv, pc, ~ p_mat_1[as.character(.x), as.character(.y)]),
+    label = sprintf("%.2f", r),
+    label = if_else(!is.na(p) & p < 0.05, paste0(label, "*"), label)
+  )
+
+ggplot(cor_df_1, aes(x = pc, y = hrv, fill = r)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label), size = 4) +
+  scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "HRV vs avg_hr PCA Scores — Correlation (1-min)",
+       x = NULL, y = NULL, fill = "r") +
+  theme_minimal()
+```
+
+```{r hrv-pca-scatter-1min, fig.width=16, fig.height=6}
+# Z-score both HRV and PC columns
+hrv_pc_1z <- hrv_pc_1 %>%
+  mutate(across(all_of(c(hrv_names, pc_names)), ~ scale(.x)[, 1]))
+
+# Pivot to long form for faceted scatter
+scatter_df_1 <- hrv_pc_1z %>%
+  pivot_longer(all_of(hrv_names), names_to = "hrv_metric", values_to = "hrv_z") %>%
+  pivot_longer(all_of(pc_names), names_to = "pc", values_to = "pc_z")
+
+ggplot(scatter_df_1, aes(x = pc_z, y = hrv_z)) +
+  geom_point(alpha = 0.4, size = 1) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  facet_grid(hrv_metric ~ pc, scales = "free") +
+  labs(title = "Scatter: z(HRV) vs z(PC) with Identity Line (1-min)",
+       x = "PC score (z)", y = "HRV metric (z)") +
+  theme_minimal(base_size = 9)
+```
+
+```{r hrv-pca-ba-1min, fig.width=16, fig.height=6}
+# Bland-Altman data
+ba_df_1 <- scatter_df_1 %>%
+  mutate(
+    ba_mean = (hrv_z + pc_z) / 2,
+    ba_diff = hrv_z - pc_z
+  )
+
+ba_limits_1 <- ba_df_1 %>%
+  group_by(hrv_metric, pc) %>%
+  summarise(
+    mean_diff = mean(ba_diff, na.rm = TRUE),
+    sd_diff   = sd(ba_diff, na.rm = TRUE),
+    upper     = mean_diff + 1.96 * sd_diff,
+    lower     = mean_diff - 1.96 * sd_diff,
+    .groups = "drop"
+  )
+
+ggplot(ba_df_1, aes(x = ba_mean, y = ba_diff)) +
+  geom_point(alpha = 0.4, size = 1) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "grey50") +
+  geom_hline(data = ba_limits_1, aes(yintercept = mean_diff),
+             linetype = "dashed", color = "blue") +
+  geom_hline(data = ba_limits_1, aes(yintercept = upper),
+             linetype = "dotted", color = "red") +
+  geom_hline(data = ba_limits_1, aes(yintercept = lower),
+             linetype = "dotted", color = "red") +
+  facet_grid(hrv_metric ~ pc, scales = "free") +
+  labs(title = "Bland-Altman: z(HRV) vs z(PC) (1-min)",
+       x = "Mean of z-scores", y = "Difference (HRV - PC)") +
+  theme_minimal(base_size = 9)
+```
+
+```{r hrv-pca-icc-1min}
+# ICC table
+icc_results_1 <- expand_grid(hrv = hrv_names, pc = pc_names) %>%
+  rowwise() %>%
+  mutate(
+    icc_obj = list({
+      d <- hrv_pc_1z %>% select(h = all_of(hrv), p = all_of(pc)) %>% drop_na()
+      irr::icc(d, model = "twoway", type = "agreement", unit = "single")
+    }),
+    icc_val   = icc_obj$value,
+    icc_lower = icc_obj$lbound,
+    icc_upper = icc_obj$ubound
+  ) %>%
+  ungroup() %>%
+  select(-icc_obj)
+
+kable(icc_results_1, digits = 3,
+      col.names = c("HRV Metric", "PC", "ICC", "95% CI Lower", "95% CI Upper"),
+      caption = "ICC (two-way, agreement) between z-scored HRV metrics and PC scores (1-min)")
+```
+
+:::
+
+### 6.2.2 SDNN vs −PC3: Sign-Flipped Agreement
+
+SDNN and PC3 appear anticorrelated. Flipping the sign of PC3 and comparing
+z-scored SDNN vs z(−PC3) via scatter (identity line) and Bland-Altman.
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r sdnn-pc3-scatter-5min, fig.width=6, fig.height=5}
+# Build sign-flipped z-scored data
+sdnn_pc3_5 <- hrv_pc_5 %>%
+  transmute(
+    id, condition4,
+    sdnn_z  = scale(mean_sdnn_ms)[, 1],
+    pc3_z   = -scale(PC3)[, 1]   # flip sign
+  )
+
+ggplot(sdnn_pc3_5, aes(x = pc3_z, y = sdnn_z, color = condition4)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = condition4_colors) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue", linewidth = 0.7) +
+  labs(title = "z(SDNN) vs z(−PC3) — 5-min",
+       x = "z(−PC3)", y = "z(SDNN)") +
+  coord_equal() +
+  theme_minimal()
+
+# Print correlation
+r_test <- cor.test(sdnn_pc3_5$sdnn_z, sdnn_pc3_5$pc3_z)
+cat(sprintf("r = %.3f, p = %.2e\n", r_test$estimate, r_test$p.value))
+```
+
+```{r sdnn-pc3-ba-5min, fig.width=6, fig.height=5}
+ba_5 <- sdnn_pc3_5 %>%
+  mutate(
+    ba_mean = (sdnn_z + pc3_z) / 2,
+    ba_diff = sdnn_z - pc3_z
+  )
+
+mean_diff_5 <- mean(ba_5$ba_diff, na.rm = TRUE)
+sd_diff_5   <- sd(ba_5$ba_diff, na.rm = TRUE)
+
+ggplot(ba_5, aes(x = ba_mean, y = ba_diff, color = condition4)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = condition4_colors) +
+  geom_hline(yintercept = 0, color = "grey50") +
+  geom_hline(yintercept = mean_diff_5, linetype = "dashed", color = "blue") +
+  geom_hline(yintercept = mean_diff_5 + 1.96 * sd_diff_5,
+             linetype = "dotted", color = "red") +
+  geom_hline(yintercept = mean_diff_5 - 1.96 * sd_diff_5,
+             linetype = "dotted", color = "red") +
+  labs(title = "Bland-Altman: z(SDNN) vs z(−PC3) — 5-min",
+       x = "Mean of z-scores", y = "Difference (SDNN − (−PC3))",
+       color = "Condition") +
+  theme_minimal()
+
+cat(sprintf("Mean diff = %.3f, 95%% LoA = [%.3f, %.3f]\n",
+            mean_diff_5,
+            mean_diff_5 - 1.96 * sd_diff_5,
+            mean_diff_5 + 1.96 * sd_diff_5))
+
+# ICC
+icc_5 <- irr::icc(ba_5 %>% select(sdnn_z, pc3_z),
+                   model = "twoway", type = "agreement", unit = "single")
+cat(sprintf("ICC = %.3f [%.3f, %.3f]\n", icc_5$value, icc_5$lbound, icc_5$ubound))
+```
+
+#### 1-min
+
+```{r sdnn-pc3-scatter-1min, fig.width=6, fig.height=5}
+sdnn_pc3_1 <- hrv_pc_1 %>%
+  transmute(
+    id, condition4,
+    sdnn_z  = scale(mean_sdnn_ms)[, 1],
+    pc3_z   = -scale(PC3)[, 1]
+  )
+
+ggplot(sdnn_pc3_1, aes(x = pc3_z, y = sdnn_z, color = condition4)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = condition4_colors) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue", linewidth = 0.7) +
+  labs(title = "z(SDNN) vs z(−PC3) — 1-min",
+       x = "z(−PC3)", y = "z(SDNN)") +
+  coord_equal() +
+  theme_minimal()
+
+r_test <- cor.test(sdnn_pc3_1$sdnn_z, sdnn_pc3_1$pc3_z)
+cat(sprintf("r = %.3f, p = %.2e\n", r_test$estimate, r_test$p.value))
+```
+
+```{r sdnn-pc3-ba-1min, fig.width=6, fig.height=5}
+ba_1 <- sdnn_pc3_1 %>%
+  mutate(
+    ba_mean = (sdnn_z + pc3_z) / 2,
+    ba_diff = sdnn_z - pc3_z
+  )
+
+mean_diff_1 <- mean(ba_1$ba_diff, na.rm = TRUE)
+sd_diff_1   <- sd(ba_1$ba_diff, na.rm = TRUE)
+
+ggplot(ba_1, aes(x = ba_mean, y = ba_diff, color = condition4)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = condition4_colors) +
+  geom_hline(yintercept = 0, color = "grey50") +
+  geom_hline(yintercept = mean_diff_1, linetype = "dashed", color = "blue") +
+  geom_hline(yintercept = mean_diff_1 + 1.96 * sd_diff_1,
+             linetype = "dotted", color = "red") +
+  geom_hline(yintercept = mean_diff_1 - 1.96 * sd_diff_1,
+             linetype = "dotted", color = "red") +
+  labs(title = "Bland-Altman: z(SDNN) vs z(−PC3) — 1-min",
+       x = "Mean of z-scores", y = "Difference (SDNN − (−PC3))",
+       color = "Condition") +
+  theme_minimal()
+
+cat(sprintf("Mean diff = %.3f, 95%% LoA = [%.3f, %.3f]\n",
+            mean_diff_1,
+            mean_diff_1 - 1.96 * sd_diff_1,
+            mean_diff_1 + 1.96 * sd_diff_1))
+
+icc_1 <- irr::icc(ba_1 %>% select(sdnn_z, pc3_z),
+                   model = "twoway", type = "agreement", unit = "single")
+cat(sprintf("ICC = %.3f [%.3f, %.3f]\n", icc_1$value, icc_1$lbound, icc_1$ubound))
 ```
 
 :::
@@ -684,6 +1627,12 @@ pca_top_5 <- run_pca_analysis(metrics_5min, top_metrics_kw, "Top Sig. —")
 pca_top_5$p12
 ```
 
+```{r pca-top-5min-13, fig.width=10, fig.height=6}
+pca_top_5$p13
+ggsave("../results/figures/thew_pca_top_sig_metrics_pc1_vs_pc3_5min.png",
+       pca_top_5$p13, width = 10, height = 6, dpi = 300)
+```
+
 ```{r pca-top-5min-34, fig.width=10, fig.height=6}
 pca_top_5$p34
 ```
@@ -701,6 +1650,12 @@ pca_top_5$p_var
 ```{r pca-top-1min, fig.width=10, fig.height=6}
 pca_top_1 <- run_pca_analysis(metrics_1min, top_metrics_kw, "Top Sig. —")
 pca_top_1$p12
+```
+
+```{r pca-top-1min-13, fig.width=10, fig.height=6}
+pca_top_1$p13
+ggsave("../results/figures/thew_pca_top_sig_metrics_pc1_vs_pc3_1min.png",
+       pca_top_1$p13, width = 10, height = 6, dpi = 300)
 ```
 
 ```{r pca-top-1min-34, fig.width=10, fig.height=6}

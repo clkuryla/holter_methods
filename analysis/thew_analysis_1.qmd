@@ -27,6 +27,9 @@ library(broom)
 library(scales)
 library(irr)
 library(plotly)
+library(pROC)      # roc(), auc(), ci.auc()
+library(rstatix)   # kruskal_test(), kruskal_effsize()
+library(clinfun)   # jonckheere.test()
 
 theme_set(theme_minimal(base_size = 12))
 set.seed(42)
@@ -939,6 +942,16 @@ run_pca_analysis <- function(df, metric_cols, title_prefix = "") {
 }
 ```
 
+```{r loading-color-helper}
+# Color-code cells: cornflowerblue (negative) -> white (0) -> mediumvioletred (positive)
+loading_color <- function(x) {
+  r <- ifelse(x >= 0, 0.78 + 0.22 * x, 0.39 + 0.61 * (1 + x))
+  g <- ifelse(x >= 0, 0.44 + 0.56 * (1 - x), 0.58 + 0.42 * (1 + x))
+  b <- ifelse(x >= 0, 0.56 + 0.44 * (1 - x), 0.93 + 0.07 * (1 + x))
+  sprintf("background-color: rgb(%.0f,%.0f,%.0f);", r*255, g*255, b*255)
+}
+```
+
 ### 6.1 All Metrics (38)
 
 ::: {.panel-tabset}
@@ -968,6 +981,37 @@ pca_all_5$p_load
 pca_all_5$p_var
 ```
 
+```{r pca-all-5min-sorted-loadings, results='asis'}
+n_pcs_show <- min(8, ncol(pca_all_5$pca_res$rotation))
+load_mat <- pca_all_5$pca_res$rotation[, 1:n_pcs_show]
+
+sorted_loadings <- map_dfr(1:n_pcs_show, function(k) {
+  vals <- load_mat[, k]
+  ord <- order(abs(vals), decreasing = TRUE)
+  tibble(
+    PC   = paste0("PC", k),
+    Rank = seq_along(ord),
+    Variable = str_remove(names(vals)[ord], "^avg_hr_"),
+    Loading  = round(vals[ord], 2)
+  )
+})
+
+for (pc in paste0("PC", 1:n_pcs_show)) {
+  pc_df <- sorted_loadings %>% filter(PC == !!pc) %>% select(Rank, Variable, Loading)
+
+  cat(sprintf("\n<details><summary><b>%s — Sorted Loadings</b></summary>\n\n", pc))
+  cat("<table style='border-collapse:collapse; font-size:12px;'>\n")
+  cat("<tr><th style='padding:4px 8px;'>Rank</th><th style='padding:4px 8px;'>Variable</th><th style='padding:4px 8px;'>Loading</th></tr>\n")
+  for (i in seq_len(nrow(pc_df))) {
+    bg <- loading_color(pc_df$Loading[i])
+    txt_col <- ifelse(abs(pc_df$Loading[i]) > 0.6, "color:white;", "color:black;")
+    cat(sprintf("<tr><td style='padding:2px 8px;'>%d</td><td style='padding:2px 8px;'>%s</td><td style='padding:2px 8px; %s %s text-align:right;'>%+.2f</td></tr>\n",
+                pc_df$Rank[i], pc_df$Variable[i], bg, txt_col, pc_df$Loading[i]))
+  }
+  cat("</table>\n\n</details>\n")
+}
+```
+
 #### 1-min
 
 ```{r pca-all-1min, fig.width=10, fig.height=6}
@@ -993,6 +1037,37 @@ pca_all_1$p_load
 pca_all_1$p_var
 ```
 
+```{r pca-all-1min-sorted-loadings, results='asis'}
+n_pcs_show <- min(8, ncol(pca_all_1$pca_res$rotation))
+load_mat <- pca_all_1$pca_res$rotation[, 1:n_pcs_show]
+
+sorted_loadings <- map_dfr(1:n_pcs_show, function(k) {
+  vals <- load_mat[, k]
+  ord <- order(abs(vals), decreasing = TRUE)
+  tibble(
+    PC   = paste0("PC", k),
+    Rank = seq_along(ord),
+    Variable = str_remove(names(vals)[ord], "^avg_hr_"),
+    Loading  = round(vals[ord], 2)
+  )
+})
+
+for (pc in paste0("PC", 1:n_pcs_show)) {
+  pc_df <- sorted_loadings %>% filter(PC == !!pc) %>% select(Rank, Variable, Loading)
+
+  cat(sprintf("\n<details><summary><b>%s — Sorted Loadings</b></summary>\n\n", pc))
+  cat("<table style='border-collapse:collapse; font-size:12px;'>\n")
+  cat("<tr><th style='padding:4px 8px;'>Rank</th><th style='padding:4px 8px;'>Variable</th><th style='padding:4px 8px;'>Loading</th></tr>\n")
+  for (i in seq_len(nrow(pc_df))) {
+    bg <- loading_color(pc_df$Loading[i])
+    txt_col <- ifelse(abs(pc_df$Loading[i]) > 0.6, "color:white;", "color:black;")
+    cat(sprintf("<tr><td style='padding:2px 8px;'>%d</td><td style='padding:2px 8px;'>%s</td><td style='padding:2px 8px; %s %s text-align:right;'>%+.2f</td></tr>\n",
+                pc_df$Rank[i], pc_df$Variable[i], bg, txt_col, pc_df$Loading[i]))
+  }
+  cat("</table>\n\n</details>\n")
+}
+```
+
 :::
 
 ### 6.2 avg_hr Metrics Only (34)
@@ -1012,6 +1087,21 @@ pca_avghr_5$p3d
 
 ```{r pca-avghr-5min-dist, fig.width=8, fig.height=5}
 pca_avghr_5$p_dist
+```
+
+```{r pca-avghr-5min-composite-loadings}
+# Composite index loadings: PC1 - PC2 - PC3 in terms of original variables
+rot <- pca_avghr_5$pca_res$rotation
+composite_coef <- rot[, "PC1"] - rot[, "PC2"] - rot[, "PC3"]
+composite_df <- tibble(
+  Variable = str_remove(names(composite_coef), "^avg_hr_"),
+  Coefficient = round(composite_coef, 4)
+) %>%
+  arrange(desc(abs(Coefficient)))
+
+knitr::kable(composite_df,
+             caption = "Composite Index (PC1 − PC2 − PC3): variable coefficients sorted by |coefficient| (5-min)",
+             align = c("l", "r"))
 ```
 
 ```{r pca-avghr-5min-pc1-jitter, fig.width=8, fig.height=5}
@@ -1092,20 +1182,9 @@ sorted_loadings_5 <- map_dfr(1:n_pcs_show, function(k) {
   )
 })
 
-# Color-code cells: cornflowerblue (negative) → white (0) → mediumvioletred (positive)
-loading_color <- function(x) {
-  # Map loading [-1, 1] to RGB
-  r <- ifelse(x >= 0, 0.78 + 0.22 * x, 0.39 + 0.61 * (1 + x))
-  g <- ifelse(x >= 0, 0.44 + 0.56 * (1 - x), 0.58 + 0.42 * (1 + x))
-  b <- ifelse(x >= 0, 0.56 + 0.44 * (1 - x), 0.93 + 0.07 * (1 + x))
-  sprintf("background-color: rgb(%.0f,%.0f,%.0f);", r*255, g*255, b*255)
-}
-
 # Build one table per PC
 for (pc in paste0("PC", 1:n_pcs_show)) {
   pc_df <- sorted_loadings_5 %>% filter(PC == !!pc) %>% select(Rank, Variable, Loading)
-
-  # Create styled HTML table
   cat(sprintf("\n<details><summary><b>%s — Sorted Loadings</b></summary>\n\n", pc))
   cat("<table style='border-collapse:collapse; font-size:12px;'>\n")
   cat("<tr><th style='padding:4px 8px;'>Rank</th><th style='padding:4px 8px;'>Variable</th><th style='padding:4px 8px;'>Loading</th></tr>\n")
@@ -1133,6 +1212,20 @@ pca_avghr_1$p3d
 
 ```{r pca-avghr-1min-dist, fig.width=8, fig.height=5}
 pca_avghr_1$p_dist
+```
+
+```{r pca-avghr-1min-composite-loadings}
+rot_1 <- pca_avghr_1$pca_res$rotation
+composite_coef_1 <- rot_1[, "PC1"] - rot_1[, "PC2"] - rot_1[, "PC3"]
+composite_df_1 <- tibble(
+  Variable = str_remove(names(composite_coef_1), "^avg_hr_"),
+  Coefficient = round(composite_coef_1, 4)
+) %>%
+  arrange(desc(abs(Coefficient)))
+
+knitr::kable(composite_df_1,
+             caption = "Composite Index (PC1 − PC2 − PC3): variable coefficients sorted by |coefficient| (1-min)",
+             align = c("l", "r"))
 ```
 
 ```{r pca-avghr-1min-pc1-jitter, fig.width=8, fig.height=5}
@@ -1645,6 +1738,37 @@ pca_top_5$p_load
 pca_top_5$p_var
 ```
 
+```{r pca-top-5min-sorted-loadings, results='asis'}
+n_pcs_show <- min(8, ncol(pca_top_5$pca_res$rotation))
+load_mat <- pca_top_5$pca_res$rotation[, 1:n_pcs_show]
+
+sorted_loadings <- map_dfr(1:n_pcs_show, function(k) {
+  vals <- load_mat[, k]
+  ord <- order(abs(vals), decreasing = TRUE)
+  tibble(
+    PC   = paste0("PC", k),
+    Rank = seq_along(ord),
+    Variable = str_remove(names(vals)[ord], "^avg_hr_"),
+    Loading  = round(vals[ord], 2)
+  )
+})
+
+for (pc in paste0("PC", 1:n_pcs_show)) {
+  pc_df <- sorted_loadings %>% filter(PC == !!pc) %>% select(Rank, Variable, Loading)
+
+  cat(sprintf("\n<details><summary><b>%s — Sorted Loadings</b></summary>\n\n", pc))
+  cat("<table style='border-collapse:collapse; font-size:12px;'>\n")
+  cat("<tr><th style='padding:4px 8px;'>Rank</th><th style='padding:4px 8px;'>Variable</th><th style='padding:4px 8px;'>Loading</th></tr>\n")
+  for (i in seq_len(nrow(pc_df))) {
+    bg <- loading_color(pc_df$Loading[i])
+    txt_col <- ifelse(abs(pc_df$Loading[i]) > 0.6, "color:white;", "color:black;")
+    cat(sprintf("<tr><td style='padding:2px 8px;'>%d</td><td style='padding:2px 8px;'>%s</td><td style='padding:2px 8px; %s %s text-align:right;'>%+.2f</td></tr>\n",
+                pc_df$Rank[i], pc_df$Variable[i], bg, txt_col, pc_df$Loading[i]))
+  }
+  cat("</table>\n\n</details>\n")
+}
+```
+
 #### 1-min
 
 ```{r pca-top-1min, fig.width=10, fig.height=6}
@@ -1668,6 +1792,37 @@ pca_top_1$p_load
 
 ```{r pca-top-1min-var, fig.width=8, fig.height=4}
 pca_top_1$p_var
+```
+
+```{r pca-top-1min-sorted-loadings, results='asis'}
+n_pcs_show <- min(8, ncol(pca_top_1$pca_res$rotation))
+load_mat <- pca_top_1$pca_res$rotation[, 1:n_pcs_show]
+
+sorted_loadings <- map_dfr(1:n_pcs_show, function(k) {
+  vals <- load_mat[, k]
+  ord <- order(abs(vals), decreasing = TRUE)
+  tibble(
+    PC   = paste0("PC", k),
+    Rank = seq_along(ord),
+    Variable = str_remove(names(vals)[ord], "^avg_hr_"),
+    Loading  = round(vals[ord], 2)
+  )
+})
+
+for (pc in paste0("PC", 1:n_pcs_show)) {
+  pc_df <- sorted_loadings %>% filter(PC == !!pc) %>% select(Rank, Variable, Loading)
+
+  cat(sprintf("\n<details><summary><b>%s — Sorted Loadings</b></summary>\n\n", pc))
+  cat("<table style='border-collapse:collapse; font-size:12px;'>\n")
+  cat("<tr><th style='padding:4px 8px;'>Rank</th><th style='padding:4px 8px;'>Variable</th><th style='padding:4px 8px;'>Loading</th></tr>\n")
+  for (i in seq_len(nrow(pc_df))) {
+    bg <- loading_color(pc_df$Loading[i])
+    txt_col <- ifelse(abs(pc_df$Loading[i]) > 0.6, "color:white;", "color:black;")
+    cat(sprintf("<tr><td style='padding:2px 8px;'>%d</td><td style='padding:2px 8px;'>%s</td><td style='padding:2px 8px; %s %s text-align:right;'>%+.2f</td></tr>\n",
+                pc_df$Rank[i], pc_df$Variable[i], bg, txt_col, pc_df$Loading[i]))
+  }
+  cat("</table>\n\n</details>\n")
+}
 ```
 
 :::
@@ -1704,4 +1859,465 @@ cat(sprintf("\n**Most significant pairwise comparison**: %s vs %s on metric %s (
 cat("**Note**: CAD_Diabetes (n=29) and ESRD (n=41) groups have relatively small sample sizes; ",
     "non-parametric tests (Kruskal-Wallis, Wilcoxon) are more reliable than parametric alternatives ",
     "for these groups.\n")
+```
+
+
+## 8 Metric Discriminability: PCA Composite vs SD of avg HR
+
+This section formally compares two candidate scalar summaries of 24-hour heart-rate complexity for their ability to discriminate among the four clinical groups along the hypothesised severity gradient **Healthy > CAD > CAD\_Diabetes ≥ ESRD**:
+
+- **PCA Composite** (`pca_dist = PC1 − PC2 − PC3`) — a data-driven linear combination of all 34 avg-HR features.
+- **SD of avg HR** (`avg_hr_sd`) — a single, clinically interpretable variability measure.
+
+Five analyses are applied to each metric: pairwise AUCs, Kruskal-Wallis with effect size, Jonckheere-Terpstra trend test, Bhattacharyya distance, and overlap coefficient.
+
+```{r s8-helpers}
+#| include: false
+
+# --- Core workhorse: run all five discriminability analyses on one metric ---
+compare_metric <- function(df, metric_name, label) {
+  stopifnot(all(c("metric_value", "condition4") %in% names(df)))
+  df <- df %>% filter(!is.na(metric_value))
+
+  levels_ordered <- levels(df$condition4)
+  stopifnot(length(levels_ordered) == 4)
+
+  # ---- 1. Pairwise AUCs (DeLong CIs) ----
+  pairs <- combn(levels_ordered, 2, simplify = FALSE)
+  roc_objects <- list()
+  auc_rows <- list()
+
+  for (pair in pairs) {
+    df_pair <- df %>% filter(condition4 %in% pair)
+    pair_label <- paste(pair, collapse = " vs ")
+
+    roc_obj <- tryCatch(
+      pROC::roc(
+        response  = factor(df_pair$condition4, levels = pair),
+        predictor = df_pair$metric_value,
+        direction = "auto",
+        quiet     = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    if (!is.null(roc_obj)) {
+      auc_val <- as.numeric(pROC::auc(roc_obj))
+      # Ensure AUC >= 0.5
+      if (auc_val < 0.5) {
+        roc_obj <- pROC::roc(
+          response  = factor(df_pair$condition4, levels = rev(pair)),
+          predictor = df_pair$metric_value,
+          direction = "auto",
+          quiet     = TRUE
+        )
+        auc_val <- as.numeric(pROC::auc(roc_obj))
+      }
+      ci_obj <- tryCatch(pROC::ci.auc(roc_obj, method = "delong"), error = function(e) NULL)
+      ci_lo <- if (!is.null(ci_obj)) ci_obj[1] else NA_real_
+      ci_hi <- if (!is.null(ci_obj)) ci_obj[3] else NA_real_
+    } else {
+      auc_val <- NA_real_
+      ci_lo   <- NA_real_
+      ci_hi   <- NA_real_
+    }
+
+    roc_objects[[pair_label]] <- roc_obj
+    auc_rows[[pair_label]] <- tibble(
+      metric = label,
+      pair   = pair_label,
+      auc    = auc_val,
+      ci_lo  = ci_lo,
+      ci_hi  = ci_hi
+    )
+  }
+
+  auc_table <- bind_rows(auc_rows)
+
+  # Mean AUC for Healthy-vs-disease pairs
+  hvd_pairs <- auc_table %>%
+    filter(grepl("^Healthy", pair))
+  mean_hvd_auc <- mean(hvd_pairs$auc, na.rm = TRUE)
+
+  # ---- 2. Kruskal-Wallis + epsilon-squared ----
+  kw <- rstatix::kruskal_test(df, metric_value ~ condition4)
+  eps2 <- rstatix::kruskal_effsize(df, metric_value ~ condition4)
+
+  # ---- 3. Jonckheere-Terpstra trend test ----
+  # alternative = "decreasing" tests H1: Healthy > CAD > CAD_Diabetes > ESRD
+  jt_res <- clinfun::jonckheere.test(
+    x = df$metric_value,
+    g = as.integer(df$condition4),
+    alternative = "decreasing"
+  )
+  jt_stat <- jt_res$statistic
+  jt_p    <- jt_res$p.value
+
+  # ---- 4. Bhattacharyya distance (Gaussian approx), Healthy vs each disease ----
+  bhatt_fn <- function(x, y) {
+    mx <- mean(x, na.rm = TRUE); sx <- sd(x, na.rm = TRUE)
+    my <- mean(y, na.rm = TRUE); sy <- sd(y, na.rm = TRUE)
+    if (is.na(sx) || is.na(sy) || sx == 0 || sy == 0) return(NA_real_)
+    sigma_bar2 <- (sx^2 + sy^2) / 2
+    (1/8) * (mx - my)^2 / sigma_bar2 + 0.5 * log(sigma_bar2 / (sx * sy))
+  }
+
+  healthy_vals <- df$metric_value[df$condition4 == "Healthy"]
+  disease_groups <- setdiff(levels_ordered, "Healthy")
+  bhatt_rows <- list()
+  for (dg in disease_groups) {
+    dg_vals <- df$metric_value[df$condition4 == dg]
+    sw_healthy <- tryCatch(shapiro.test(healthy_vals)$p.value, error = function(e) NA_real_)
+    sw_disease <- tryCatch(shapiro.test(dg_vals)$p.value, error = function(e) NA_real_)
+    bhatt_rows[[dg]] <- tibble(
+      metric       = label,
+      comparison   = paste("Healthy vs", dg),
+      bhatt_dist   = bhatt_fn(healthy_vals, dg_vals),
+      shapiro_healthy = sw_healthy,
+      shapiro_disease = sw_disease
+    )
+  }
+  bhatt_table <- bind_rows(bhatt_rows)
+
+  # ---- 5. Overlap coefficient (KDE + trapezoidal integration) ----
+  ovl_fn <- function(x, y, n_grid = 512) {
+    rng <- range(c(x, y), na.rm = TRUE)
+    bw  <- max(bw.nrd0(x), bw.nrd0(y))
+    dx  <- density(x, bw = bw, from = rng[1], to = rng[2], n = n_grid)
+    dy  <- density(y, bw = bw, from = rng[1], to = rng[2], n = n_grid)
+    min_dens <- pmin(dx$y, dy$y)
+    ovl_raw  <- pracma::trapz(dx$x, min_dens)
+    min(1.0, ovl_raw)
+  }
+
+  ovl_rows <- list()
+  for (dg in disease_groups) {
+    dg_vals <- df$metric_value[df$condition4 == dg]
+    ovl_rows[[dg]] <- tibble(
+      metric     = label,
+      comparison = paste("Healthy vs", dg),
+      ovl        = ovl_fn(healthy_vals, dg_vals)
+    )
+  }
+  ovl_table <- bind_rows(ovl_rows)
+
+  list(
+    label       = label,
+    auc_table   = auc_table,
+    mean_hvd_auc = mean_hvd_auc,
+    roc_objects = roc_objects,
+    kw          = kw,
+    eps2        = eps2,
+    jt_stat     = jt_stat,
+    jt_p        = jt_p,
+    bhatt_table = bhatt_table,
+    ovl_table   = ovl_table
+  )
+}
+
+# --- Build a long tibble of ROC curve coordinates for ggplot ---
+make_roc_df <- function(res) {
+  roc_list <- res$roc_objects
+  rows <- list()
+  for (pair_name in names(roc_list)) {
+    roc_obj <- roc_list[[pair_name]]
+    if (is.null(roc_obj)) next
+    auc_val <- as.numeric(pROC::auc(roc_obj))
+    rows[[pair_name]] <- tibble(
+      metric      = res$label,
+      pair        = pair_name,
+      auc_label   = sprintf("%s (AUC=%.2f)", pair_name, auc_val),
+      specificity = roc_obj$specificities,
+      sensitivity = roc_obj$sensitivities
+    )
+  }
+  bind_rows(rows)
+}
+
+# --- Side-by-side comparison table ---
+format_comparison_table <- function(res_a, res_b) {
+  extract_row <- function(res) {
+    bhatt_vals <- res$bhatt_table$bhatt_dist
+    ovl_vals   <- res$ovl_table$ovl
+    tibble(
+      Metric          = res$label,
+      `Mean AUC (H vs D)` = sprintf("%.3f", res$mean_hvd_auc),
+      `KW H`          = sprintf("%.1f", res$kw$statistic),
+      `KW p`          = sprintf("%.2e", res$kw$p),
+      `ε²`            = sprintf("%.3f", res$eps2$effsize),
+      `JT stat`       = sprintf("%.0f", res$jt_stat),
+      `JT p`          = sprintf("%.2e", res$jt_p),
+      `Bhatt (H vs CAD)`       = sprintf("%.3f", bhatt_vals[1]),
+      `Bhatt (H vs CAD_Diab)`  = sprintf("%.3f", bhatt_vals[2]),
+      `Bhatt (H vs ESRD)`      = sprintf("%.3f", bhatt_vals[3]),
+      `OVL (H vs CAD)`         = sprintf("%.3f", ovl_vals[1]),
+      `OVL (H vs CAD_Diab)`    = sprintf("%.3f", ovl_vals[2]),
+      `OVL (H vs ESRD)`        = sprintf("%.3f", ovl_vals[3])
+    )
+  }
+  bind_rows(extract_row(res_a), extract_row(res_b))
+}
+```
+
+```{r s8-prep}
+#| include: false
+
+# --- 5-min datasets ---
+cmp_pca_5 <- pca_avghr_5$scores %>%
+  select(id, condition4, pca_dist) %>%
+  rename(metric_value = pca_dist)
+
+cmp_sd_5 <- metrics_5min %>%
+  select(id, condition4, avg_hr_sd) %>%
+  rename(metric_value = avg_hr_sd)
+
+res_pca_5 <- compare_metric(cmp_pca_5, "pca_dist", "PCA Composite (PC1−PC2−PC3)")
+res_sd_5  <- compare_metric(cmp_sd_5,  "avg_hr_sd", "SD of avg HR")
+
+# --- 1-min datasets ---
+cmp_pca_1 <- pca_avghr_1$scores %>%
+  select(id, condition4, pca_dist) %>%
+  rename(metric_value = pca_dist)
+
+cmp_sd_1 <- metrics_1min %>%
+  select(id, condition4, avg_hr_sd) %>%
+  rename(metric_value = avg_hr_sd)
+
+res_pca_1 <- compare_metric(cmp_pca_1, "pca_dist", "PCA Composite (PC1−PC2−PC3)")
+res_sd_1  <- compare_metric(cmp_sd_1,  "avg_hr_sd", "SD of avg HR")
+```
+
+::: {.panel-tabset}
+
+### 5-min
+
+```{r s8-dist-plot-5min}
+#| fig.width: 10
+#| fig.height: 5
+
+bind_rows(
+  cmp_pca_5 %>% mutate(metric = "PCA Composite (PC1−PC2−PC3)"),
+  cmp_sd_5  %>% mutate(metric = "SD of avg HR")
+) %>%
+  ggplot(aes(x = condition4, y = metric_value, color = condition4)) +
+  geom_violin(aes(fill = condition4), alpha = 0.2, color = NA) +
+  geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
+  facet_wrap(~ metric, scales = "free_y") +
+  scale_color_manual(values = condition4_colors) +
+  scale_fill_manual(values = condition4_colors) +
+  labs(
+    title = "Distribution by group — 5-min resolution",
+    x = NULL, y = "Metric value", color = "Condition", fill = "Condition"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+```{r s8-roc-5min}
+#| fig.width: 12
+#| fig.height: 6
+
+roc_df_5 <- bind_rows(make_roc_df(res_pca_5), make_roc_df(res_sd_5))
+
+ggplot(roc_df_5, aes(x = 1 - specificity, y = sensitivity)) +
+  geom_line(color = "#0072B2", linewidth = 0.8) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  facet_grid(metric ~ auc_label) +
+  labs(
+    title = "ROC curves — 5-min resolution",
+    x = "1 − Specificity", y = "Sensitivity"
+  ) +
+  coord_equal() +
+  theme(strip.text = element_text(size = 7))
+```
+
+```{r s8-auc-table-5min}
+auc_combined_5 <- bind_rows(res_pca_5$auc_table, res_sd_5$auc_table) %>%
+  mutate(
+    AUC_CI = sprintf("%.3f [%.3f, %.3f]", auc, ci_lo, ci_hi),
+    interpretation = case_when(
+      !grepl("^Healthy", pair) ~ "",
+      auc >= 0.9 ~ "Excellent",
+      auc >= 0.8 ~ "Good",
+      auc >= 0.7 ~ "Fair",
+      auc >= 0.6 ~ "Poor",
+      TRUE        ~ "Fail"
+    )
+  ) %>%
+  select(metric, pair, AUC_CI, interpretation)
+
+kable(auc_combined_5, caption = "Pairwise AUCs with 95% DeLong CIs — 5-min")
+```
+
+```{r s8-comparison-table-5min}
+kable(
+  format_comparison_table(res_pca_5, res_sd_5),
+  caption = "Discriminability comparison — 5-min resolution"
+)
+```
+
+```{r s8-normality-flag-5min}
+#| results: asis
+
+bhatt_all_5 <- bind_rows(res_pca_5$bhatt_table, res_sd_5$bhatt_table)
+violations_5 <- bhatt_all_5 %>%
+  filter(shapiro_healthy < 0.05 | shapiro_disease < 0.05)
+
+if (nrow(violations_5) > 0) {
+  cat("\n\n> **Normality caveat (5-min):** Shapiro-Wilk p < 0.05 detected for the following,",
+      "meaning the Gaussian-approximation Bhattacharyya distances should be interpreted with caution:\n>\n")
+  for (i in seq_len(nrow(violations_5))) {
+    row <- violations_5[i, ]
+    cat(sprintf("> - %s, %s (Shapiro p: Healthy=%.3f, Disease=%.3f)\n",
+                row$metric, row$comparison, row$shapiro_healthy, row$shapiro_disease))
+  }
+  cat("\n")
+}
+```
+
+### 1-min
+
+```{r s8-dist-plot-1min}
+#| fig.width: 10
+#| fig.height: 5
+
+bind_rows(
+  cmp_pca_1 %>% mutate(metric = "PCA Composite (PC1−PC2−PC3)"),
+  cmp_sd_1  %>% mutate(metric = "SD of avg HR")
+) %>%
+  ggplot(aes(x = condition4, y = metric_value, color = condition4)) +
+  geom_violin(aes(fill = condition4), alpha = 0.2, color = NA) +
+  geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
+  facet_wrap(~ metric, scales = "free_y") +
+  scale_color_manual(values = condition4_colors) +
+  scale_fill_manual(values = condition4_colors) +
+  labs(
+    title = "Distribution by group — 1-min resolution",
+    x = NULL, y = "Metric value", color = "Condition", fill = "Condition"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+```{r s8-roc-1min}
+#| fig.width: 12
+#| fig.height: 6
+
+roc_df_1 <- bind_rows(make_roc_df(res_pca_1), make_roc_df(res_sd_1))
+
+ggplot(roc_df_1, aes(x = 1 - specificity, y = sensitivity)) +
+  geom_line(color = "#0072B2", linewidth = 0.8) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  facet_grid(metric ~ auc_label) +
+  labs(
+    title = "ROC curves — 1-min resolution",
+    x = "1 − Specificity", y = "Sensitivity"
+  ) +
+  coord_equal() +
+  theme(strip.text = element_text(size = 7))
+```
+
+```{r s8-auc-table-1min}
+auc_combined_1 <- bind_rows(res_pca_1$auc_table, res_sd_1$auc_table) %>%
+  mutate(
+    AUC_CI = sprintf("%.3f [%.3f, %.3f]", auc, ci_lo, ci_hi),
+    interpretation = case_when(
+      !grepl("^Healthy", pair) ~ "",
+      auc >= 0.9 ~ "Excellent",
+      auc >= 0.8 ~ "Good",
+      auc >= 0.7 ~ "Fair",
+      auc >= 0.6 ~ "Poor",
+      TRUE        ~ "Fail"
+    )
+  ) %>%
+  select(metric, pair, AUC_CI, interpretation)
+
+kable(auc_combined_1, caption = "Pairwise AUCs with 95% DeLong CIs — 1-min")
+```
+
+```{r s8-comparison-table-1min}
+kable(
+  format_comparison_table(res_pca_1, res_sd_1),
+  caption = "Discriminability comparison — 1-min resolution"
+)
+```
+
+```{r s8-normality-flag-1min}
+#| results: asis
+
+bhatt_all_1 <- bind_rows(res_pca_1$bhatt_table, res_sd_1$bhatt_table)
+violations_1 <- bhatt_all_1 %>%
+  filter(shapiro_healthy < 0.05 | shapiro_disease < 0.05)
+
+if (nrow(violations_1) > 0) {
+  cat("\n\n> **Normality caveat (1-min):** Shapiro-Wilk p < 0.05 detected for the following,",
+      "meaning the Gaussian-approximation Bhattacharyya distances should be interpreted with caution:\n>\n")
+  for (i in seq_len(nrow(violations_1))) {
+    row <- violations_1[i, ]
+    cat(sprintf("> - %s, %s (Shapiro p: Healthy=%.3f, Disease=%.3f)\n",
+                row$metric, row$comparison, row$shapiro_healthy, row$shapiro_disease))
+  }
+  cat("\n")
+}
+```
+
+:::
+
+```{r s8-recommendation}
+#| results: asis
+
+# --- Build recommendation from all results ---
+cat("### Recommendation\n\n")
+
+# Compare mean AUCs across resolutions
+cat(sprintf(
+  "**Mean Healthy-vs-Disease AUC**: PCA Composite = %.3f (5-min) / %.3f (1-min); SD of avg HR = %.3f (5-min) / %.3f (1-min).\n\n",
+  res_pca_5$mean_hvd_auc, res_pca_1$mean_hvd_auc,
+  res_sd_5$mean_hvd_auc, res_sd_1$mean_hvd_auc
+))
+
+# Compare JT p-values
+cat(sprintf(
+  "**Jonckheere-Terpstra trend test** (decreasing across Healthy > CAD > CAD_Diabetes > ESRD): PCA p = %.2e (5-min) / %.2e (1-min); SD p = %.2e (5-min) / %.2e (1-min).\n\n",
+  res_pca_5$jt_p, res_pca_1$jt_p,
+  res_sd_5$jt_p, res_sd_1$jt_p
+))
+
+# Compare OVLs (lower = better separation)
+mean_ovl_pca_5 <- mean(res_pca_5$ovl_table$ovl, na.rm = TRUE)
+mean_ovl_sd_5  <- mean(res_sd_5$ovl_table$ovl, na.rm = TRUE)
+mean_ovl_pca_1 <- mean(res_pca_1$ovl_table$ovl, na.rm = TRUE)
+mean_ovl_sd_1  <- mean(res_sd_1$ovl_table$ovl, na.rm = TRUE)
+
+cat(sprintf(
+  "**Mean overlap coefficient** (Healthy vs Disease; lower = better separation): PCA = %.3f (5-min) / %.3f (1-min); SD = %.3f (5-min) / %.3f (1-min).\n\n",
+  mean_ovl_pca_5, mean_ovl_pca_1,
+  mean_ovl_sd_5, mean_ovl_sd_1
+))
+
+# Winner logic
+pca_auc_better <- (res_pca_5$mean_hvd_auc > res_sd_5$mean_hvd_auc) +
+                  (res_pca_1$mean_hvd_auc > res_sd_1$mean_hvd_auc)
+pca_jt_better  <- (res_pca_5$jt_p < res_sd_5$jt_p) +
+                  (res_pca_1$jt_p < res_sd_1$jt_p)
+pca_ovl_better <- (mean_ovl_pca_5 < mean_ovl_sd_5) +
+                  (mean_ovl_pca_1 < mean_ovl_sd_1)
+pca_score <- pca_auc_better + pca_jt_better + pca_ovl_better  # out of 6
+
+if (pca_score >= 4) {
+  winner <- "PCA Composite (PC1−PC2−PC3)"
+  reason <- "higher mean AUC, stronger monotone trend, and/or lower distributional overlap across resolutions"
+} else if (pca_score <= 2) {
+  winner <- "SD of avg HR"
+  reason <- "higher mean AUC, stronger monotone trend, and/or lower distributional overlap across resolutions"
+} else {
+  winner <- "neither metric clearly dominates"
+  reason <- "the two metrics show mixed advantages across criteria and resolutions"
+}
+
+cat(sprintf("**Overall**: %s appears to better satisfy both separation and ordering criteria (%s).\n\n", winner, reason))
+
+cat("**Caveats**:\n\n")
+cat("1. The CAD\\_Diabetes subgroup (n ≈ 29) is small, leading to wide AUC confidence intervals for comparisons involving this group.\n")
+cat("2. Shapiro-Wilk violations (see normality flags above) mean that the Gaussian-approximation Bhattacharyya distances are approximate.\n")
+cat("3. The PCA composite was evaluated on the same data used to derive the PCA loadings; its AUCs are therefore **optimistic** relative to out-of-sample performance.\n")
+cat("4. Superior discriminability does not imply causality — a metric that separates groups may reflect confounders (e.g., age, medication) rather than disease per se.\n")
 ```

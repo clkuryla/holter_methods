@@ -1,0 +1,2197 @@
+---
+title: "PhysioNet CHAOS Holter Metrics: Group Comparisons by Health Status"
+subtitle: "Catch22 complexity, entropy, and HRV metrics across AF, CHF, and Normal cohorts"
+date: today
+format:
+  gfm:
+    toc: true
+    toc-depth: 3
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 3
+    code-fold: true
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+## 1 Setup & Data Loading
+
+```{r setup}
+library(tidyverse)
+library(here)
+library(knitr)
+library(broom)
+library(scales)
+library(irr)
+library(plotly)
+library(pROC)      # roc(), auc(), ci.auc()
+library(rstatix)   # kruskal_test(), kruskal_effsize()
+library(clinfun)   # jonckheere.test()
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{r load-data}
+metrics_1min <- read_csv(here("results/physionet15/physionet15_metrics_1min.csv"),
+                         show_col_types = FALSE)
+metrics_5min <- read_csv(here("results/physionet15/physionet15_metrics_5min.csv"),
+                         show_col_types = FALSE)
+```
+
+```{r define-columns}
+# --- Metric column definitions ---
+# 24 catch22 + 7 descriptive stats + 3 entropy = 34 avg_hr columns
+avg_hr_cols <- c(
+
+  # catch22 (24)
+  "avg_hr_DN_HistogramMode_5", "avg_hr_DN_HistogramMode_10",
+  "avg_hr_CO_f1ecac", "avg_hr_CO_FirstMin_ac",
+  "avg_hr_CO_HistogramAMI_even_2_5", "avg_hr_CO_trev_1_num",
+  "avg_hr_MD_hrv_classic_pnn40",
+  "avg_hr_SB_BinaryStats_mean_longstretch1",
+  "avg_hr_SB_TransitionMatrix_3ac_sumdiagcov",
+  "avg_hr_PD_PeriodicityWang_th0_01",
+  "avg_hr_CO_Embed2_Dist_tau_d_expfit_meandiff",
+  "avg_hr_IN_AutoMutualInfoStats_40_gaussian_fmmi",
+  "avg_hr_FC_LocalSimple_mean1_tauresrat",
+  "avg_hr_DN_OutlierInclude_p_001_mdrmd",
+  "avg_hr_DN_OutlierInclude_n_001_mdrmd",
+  "avg_hr_SP_Summaries_welch_rect_area_5_1",
+  "avg_hr_SB_BinaryStats_diff_longstretch0",
+  "avg_hr_SB_MotifThree_quantile_hh",
+  "avg_hr_SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1",
+  "avg_hr_SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1",
+  "avg_hr_SP_Summaries_welch_rect_centroid",
+  "avg_hr_FC_LocalSimple_mean3_stderr",
+  "avg_hr_DN_Mean", "avg_hr_DN_Spread_Std",
+  # descriptive stats (7)
+  "avg_hr_mean", "avg_hr_sd", "avg_hr_max", "avg_hr_min",
+  "avg_hr_cv", "avg_hr_iqr", "avg_hr_median",
+  # entropy (3)
+  "avg_hr_apen", "avg_hr_sampen", "avg_hr_permen"
+)
+
+# HRV columns (2) — mean_n_beats excluded (data-quantity, not HR dynamics)
+hrv_cols <- c("mean_sdnn", "mean_rmssd")
+
+all_metric_cols <- c(avg_hr_cols, hrv_cols)
+
+# Guardrails
+stopifnot(length(avg_hr_cols) == 34)
+stopifnot(length(hrv_cols) == 2)
+stopifnot(length(all_metric_cols) == 36)
+```
+
+```{r prepare-data}
+# Factor condition with explicit level order
+condition_levels <- c("Normal", "CHF", "AF")
+
+prepare_data <- function(df) {
+  stopifnot(all(c("condition", all_metric_cols) %in% names(df)))
+  df %>%
+    mutate(condition = factor(condition, levels = condition_levels))
+}
+
+metrics_1min <- prepare_data(metrics_1min)
+metrics_5min <- prepare_data(metrics_5min)
+
+# Color palette for the 3 groups (Okabe-Ito)
+condition_colors <- c(
+  "Normal" = "#009E73",
+  "CHF"    = "#56B4E9",
+  "AF"     = "#D55E00"
+)
+```
+
+
+## 2 Data Overview & Demographics
+
+```{r group-sizes}
+bind_rows(
+  metrics_5min %>% count(condition, name = "n") %>% mutate(resolution = "5-min"),
+  metrics_1min %>% count(condition, name = "n") %>% mutate(resolution = "1-min")
+) %>%
+  pivot_wider(names_from = resolution, values_from = n) %>%
+  kable(caption = "Subjects by condition group")
+```
+
+```{r demographics}
+demo_cols <- c("age", "sex")
+demo_available <- intersect(demo_cols, names(metrics_5min))
+
+if (length(demo_available) > 0) {
+  # Numeric demographics
+  num_demo <- intersect(c("age"), demo_available)
+  if (length(num_demo) > 0) {
+    metrics_5min %>%
+      group_by(condition) %>%
+      summarize(
+        across(all_of(num_demo),
+               list(mean = ~mean(.x, na.rm = TRUE),
+                    sd   = ~sd(.x, na.rm = TRUE),
+                    n_NA = ~sum(is.na(.x))),
+               .names = "{.col}_{.fn}"),
+        .groups = "drop"
+      ) %>%
+      kable(digits = 1, caption = "Demographics by condition (mean +/- SD)")
+  }
+
+  # Sex breakdown
+  if ("sex" %in% demo_available) {
+    metrics_5min %>%
+      count(condition, sex) %>%
+      pivot_wider(names_from = sex, values_from = n, values_fill = 0) %>%
+      kable(caption = "Sex distribution by condition")
+  }
+}
+```
+
+```{r na-audit}
+na_counts <- metrics_5min %>%
+  summarize(across(all_of(all_metric_cols), ~sum(is.na(.x)))) %>%
+  pivot_longer(everything(), names_to = "metric", values_to = "n_NA_5min")
+
+na_counts_1 <- metrics_1min %>%
+  summarize(across(all_of(all_metric_cols), ~sum(is.na(.x)))) %>%
+  pivot_longer(everything(), names_to = "metric", values_to = "n_NA_1min")
+
+na_summary <- left_join(na_counts, na_counts_1, by = "metric") %>%
+  filter(n_NA_5min > 0 | n_NA_1min > 0)
+
+if (nrow(na_summary) > 0) {
+  na_summary %>% kable(caption = "Metrics with missing values")
+} else {
+  cat("No missing values in any metric column.\n")
+}
+```
+
+
+## 3 Boxplots by Condition
+
+```{r boxplot-helpers}
+# Helper to pivot metrics long and strip avg_hr_ prefix for labels
+pivot_metrics_long <- function(df, metric_cols) {
+  df %>%
+    select(id, condition, all_of(metric_cols)) %>%
+    pivot_longer(
+      cols = all_of(metric_cols),
+      names_to = "metric",
+      values_to = "value"
+    ) %>%
+    mutate(metric_label = str_remove(metric, "^avg_hr_"))
+}
+
+# Boxplot function
+plot_boxplots <- function(df_long, ncol = 4, title = "") {
+  ggplot(df_long, aes(x = condition, y = value, fill = condition)) +
+    geom_boxplot(alpha = 0.7, outlier.shape = 21, outlier.size = 1) +
+    facet_wrap(~ metric_label, scales = "free_y", ncol = ncol) +
+    scale_fill_manual(values = condition_colors) +
+    labs(title = title, x = NULL, y = NULL, fill = "Condition") +
+    theme(
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      strip.text = element_text(size = 7),
+      legend.position = "bottom"
+    )
+}
+```
+
+### avg_hr Metrics (catch22 + descriptive + entropy)
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r boxplots-avghr-5min, fig.width=14, fig.height=22}
+pivot_metrics_long(metrics_5min, avg_hr_cols) %>%
+  plot_boxplots(ncol = 4, title = "avg_hr Metrics by Condition (5-min)")
+```
+
+#### 1-min
+
+```{r boxplots-avghr-1min, fig.width=14, fig.height=22}
+pivot_metrics_long(metrics_1min, avg_hr_cols) %>%
+  plot_boxplots(ncol = 4, title = "avg_hr Metrics by Condition (1-min)")
+```
+
+:::
+
+### HRV Metrics
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r boxplots-hrv-5min, fig.width=10, fig.height=5}
+pivot_metrics_long(metrics_5min, hrv_cols) %>%
+  plot_boxplots(ncol = 2, title = "HRV Metrics by Condition (5-min)")
+```
+
+#### 1-min
+
+```{r boxplots-hrv-1min, fig.width=10, fig.height=5}
+pivot_metrics_long(metrics_1min, hrv_cols) %>%
+  plot_boxplots(ncol = 2, title = "HRV Metrics by Condition (1-min)")
+```
+
+:::
+
+## 3.5 Correlation Heatmap
+
+::: {.panel-tabset}
+
+### 5-min
+
+```{r corr-heatmap-5min, fig.width=14, fig.height=12}
+# Compute correlation matrix
+cor_mat <- cor(metrics_5min %>% select(all_of(all_metric_cols)),
+               use = "pairwise.complete.obs")
+
+# Compute p-values via cor.test
+n_cols <- ncol(cor_mat)
+p_mat <- matrix(NA, n_cols, n_cols,
+                dimnames = list(colnames(cor_mat), colnames(cor_mat)))
+for (i in 1:(n_cols - 1)) {
+  for (j in (i + 1):n_cols) {
+    test <- cor.test(metrics_5min[[colnames(cor_mat)[i]]],
+                     metrics_5min[[colnames(cor_mat)[j]]])
+    p_mat[i, j] <- test$p.value
+    p_mat[j, i] <- test$p.value
+  }
+}
+
+# Build long-form data for ggplot
+cor_df <- as.data.frame(as.table(cor_mat)) %>%
+  rename(var1 = Var1, var2 = Var2, r = Freq) %>%
+  mutate(
+    p = map2_dbl(var1, var2, ~ p_mat[as.character(.x), as.character(.y)]),
+    label = sprintf("%.2f", r),
+    label = if_else(!is.na(p) & p < 0.05, paste0(label, "*"), label),
+    var1 = str_remove(as.character(var1), "^avg_hr_"),
+    var2 = str_remove(as.character(var2), "^avg_hr_")
+  )
+
+ggplot(cor_df, aes(x = var1, y = var2, fill = r)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label), size = 2) +
+  scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "Feature Correlation Heatmap (5-min)",
+       x = NULL, y = NULL, fill = "r") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
+        axis.text.y = element_text(size = 6))
+```
+
+### 1-min
+
+```{r corr-heatmap-1min, fig.width=14, fig.height=12}
+# Compute correlation matrix
+cor_mat <- cor(metrics_1min %>% select(all_of(all_metric_cols)),
+               use = "pairwise.complete.obs")
+
+# Compute p-values via cor.test
+n_cols <- ncol(cor_mat)
+p_mat <- matrix(NA, n_cols, n_cols,
+                dimnames = list(colnames(cor_mat), colnames(cor_mat)))
+for (i in 1:(n_cols - 1)) {
+  for (j in (i + 1):n_cols) {
+    test <- cor.test(metrics_1min[[colnames(cor_mat)[i]]],
+                     metrics_1min[[colnames(cor_mat)[j]]])
+    p_mat[i, j] <- test$p.value
+    p_mat[j, i] <- test$p.value
+  }
+}
+
+# Build long-form data for ggplot
+cor_df <- as.data.frame(as.table(cor_mat)) %>%
+  rename(var1 = Var1, var2 = Var2, r = Freq) %>%
+  mutate(
+    p = map2_dbl(var1, var2, ~ p_mat[as.character(.x), as.character(.y)]),
+    label = sprintf("%.2f", r),
+    label = if_else(!is.na(p) & p < 0.05, paste0(label, "*"), label),
+    var1 = str_remove(as.character(var1), "^avg_hr_"),
+    var2 = str_remove(as.character(var2), "^avg_hr_")
+  )
+
+ggplot(cor_df, aes(x = var1, y = var2, fill = r)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label), size = 2) +
+  scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "Feature Correlation Heatmap (1-min)",
+       x = NULL, y = NULL, fill = "r") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
+        axis.text.y = element_text(size = 6))
+```
+
+:::
+
+### 3.6 Permutation Entropy vs CV Scatter
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r permen-cv-scatter-5min, fig.width=8, fig.height=6}
+ggplot(metrics_5min, aes(x = avg_hr_cv, y = avg_hr_permen, color = condition)) +
+  geom_point(size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(
+    title = "Permutation Entropy vs CV (5-min)",
+    x = "CV", y = "Permutation Entropy",
+    color = "Condition"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+#### 1-min
+
+```{r permen-cv-scatter-1min, fig.width=8, fig.height=6}
+ggplot(metrics_1min, aes(x = avg_hr_cv, y = avg_hr_permen, color = condition)) +
+  geom_point(size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(
+    title = "Permutation Entropy vs CV (1-min)",
+    x = "CV", y = "Permutation Entropy",
+    color = "Condition"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+:::
+
+### 3.7 SDNN & RMSSD by Condition
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r sdnn-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition, y = mean_sdnn, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "SDNN by Condition (5-min)", x = NULL, y = "SDNN", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r rmssd-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition, y = mean_rmssd, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "RMSSD by Condition (5-min)", x = NULL, y = "RMSSD", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r permen-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition, y = avg_hr_permen, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "Permutation Entropy by Condition (5-min)", x = NULL, y = "Permutation Entropy", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r sd-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition, y = avg_hr_sd, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "SD by Condition (5-min)", x = NULL, y = "SD (avg HR)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r cv-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition, y = avg_hr_cv, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "CV by Condition (5-min)", x = NULL, y = "CV (avg HR)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r mean-hr-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition, y = avg_hr_mean, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "Mean HR by Condition (5-min)", x = NULL, y = "Mean HR (bpm)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r median-hr-jitter-5min, fig.width=8, fig.height=5}
+ggplot(metrics_5min, aes(x = condition, y = avg_hr_median, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "Median HR by Condition (5-min)", x = NULL, y = "Median HR (bpm)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+#### 1-min
+
+```{r sdnn-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition, y = mean_sdnn, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "SDNN by Condition (1-min)", x = NULL, y = "SDNN", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r rmssd-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition, y = mean_rmssd, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "RMSSD by Condition (1-min)", x = NULL, y = "RMSSD", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r permen-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition, y = avg_hr_permen, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "Permutation Entropy by Condition (1-min)", x = NULL, y = "Permutation Entropy", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r sd-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition, y = avg_hr_sd, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "SD by Condition (1-min)", x = NULL, y = "SD (avg HR)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r cv-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition, y = avg_hr_cv, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "CV by Condition (1-min)", x = NULL, y = "CV (avg HR)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r mean-hr-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition, y = avg_hr_mean, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "Mean HR by Condition (1-min)", x = NULL, y = "Mean HR (bpm)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+```{r median-hr-jitter-1min, fig.width=8, fig.height=5}
+ggplot(metrics_1min, aes(x = condition, y = avg_hr_median, color = condition)) +
+  geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+  scale_color_manual(values = condition_colors) +
+  labs(title = "Median HR by Condition (1-min)", x = NULL, y = "Median HR (bpm)", color = "Condition") +
+  theme(legend.position = "bottom")
+```
+
+:::
+
+## 4 Omnibus Significance Tests (ANOVA & Kruskal-Wallis)
+
+```{r omnibus-helper}
+run_omnibus_tests <- function(df, metric_cols) {
+  df_long <- pivot_metrics_long(df, metric_cols)
+
+  df_long %>%
+    group_by(metric, metric_label) %>%
+    group_modify(~ {
+      dat <- .x %>% filter(!is.na(value))
+      if (n_distinct(dat$condition) < 2) {
+        return(tibble(
+          test = c("ANOVA", "Kruskal-Wallis"),
+          statistic = NA_real_, p.value = NA_real_
+        ))
+      }
+
+      # ANOVA
+      aov_res <- aov(value ~ condition, data = dat)
+      aov_tidy <- tidy(aov_res) %>%
+        filter(term == "condition") %>%
+        select(statistic, p.value) %>%
+        mutate(test = "ANOVA")
+
+      # Kruskal-Wallis
+      kw_res <- kruskal.test(value ~ condition, data = dat)
+      kw_tidy <- tidy(kw_res) %>%
+        select(statistic, p.value) %>%
+        mutate(test = "Kruskal-Wallis")
+
+      bind_rows(aov_tidy, kw_tidy)
+    }) %>%
+    ungroup() %>%
+    group_by(test) %>%
+    mutate(p_adj = p.adjust(p.value, method = "BH")) %>%
+    ungroup() %>%
+    mutate(
+      sig = case_when(
+        p_adj < 0.001 ~ "***",
+        p_adj < 0.01  ~ "**",
+        p_adj < 0.05  ~ "*",
+        TRUE          ~ ""
+      )
+    )
+}
+
+format_omnibus_table <- function(omnibus_df) {
+  omnibus_df %>%
+    select(metric_label, test, statistic, p.value, p_adj, sig) %>%
+    mutate(
+      statistic = round(statistic, 2),
+      p.value = signif(p.value, 3),
+      p_adj = signif(p_adj, 3)
+    ) %>%
+    arrange(p.value) %>%
+    kable(col.names = c("Metric", "Test", "Statistic", "p-value", "p (BH-adj)", "Sig"))
+}
+```
+
+::: {.panel-tabset}
+
+### 5-min
+
+```{r omnibus-5min}
+omnibus_5min <- run_omnibus_tests(metrics_5min, all_metric_cols)
+format_omnibus_table(omnibus_5min)
+```
+
+### 1-min
+
+```{r omnibus-1min}
+omnibus_1min <- run_omnibus_tests(metrics_1min, all_metric_cols)
+format_omnibus_table(omnibus_1min)
+```
+
+:::
+
+
+## 5 Pairwise Significance Tests
+
+```{r pairwise-helper}
+run_pairwise_tests <- function(df, metric_cols) {
+  df_long <- pivot_metrics_long(df, metric_cols)
+  pairs <- combn(condition_levels, 2, simplify = FALSE)
+
+  results <- map_dfr(pairs, function(pair) {
+    df_pair <- df_long %>% filter(condition %in% pair, !is.na(value))
+
+    df_pair %>%
+      group_by(metric, metric_label) %>%
+      group_modify(~ {
+        dat <- .x
+        if (n_distinct(dat$condition) < 2 || nrow(dat) < 4) {
+          return(tibble(
+            group1 = pair[1], group2 = pair[2],
+            t_stat = NA_real_, t_p = NA_real_,
+            w_stat = NA_real_, w_p = NA_real_
+          ))
+        }
+
+        # Welch's t-test
+        tt <- tryCatch(
+          t.test(value ~ condition, data = dat),
+          error = function(e) NULL
+        )
+        # Wilcoxon rank-sum
+        wt <- tryCatch(
+          wilcox.test(value ~ condition, data = dat),
+          error = function(e) NULL
+        )
+
+        tibble(
+          group1 = pair[1], group2 = pair[2],
+          t_stat = if (!is.null(tt)) tt$statistic else NA_real_,
+          t_p    = if (!is.null(tt)) tt$p.value   else NA_real_,
+          w_stat = if (!is.null(wt)) wt$statistic else NA_real_,
+          w_p    = if (!is.null(wt)) wt$p.value   else NA_real_
+        )
+      }) %>%
+      ungroup()
+  })
+
+  # BH adjustment across all pairwise tests per test type
+  results %>%
+    mutate(
+      t_p_adj = p.adjust(t_p, method = "BH"),
+      w_p_adj = p.adjust(w_p, method = "BH"),
+      pair = paste(group1, "vs", group2)
+    )
+}
+
+# Summary: for each metric, the most significant pair
+pairwise_summary <- function(pw_df) {
+  pw_df %>%
+    group_by(metric, metric_label) %>%
+    slice_min(w_p, n = 1, with_ties = FALSE) %>%
+    ungroup() %>%
+    select(metric_label, pair, w_stat, w_p, w_p_adj, t_p) %>%
+    mutate(
+      sig = case_when(
+        w_p_adj < 0.001 ~ "***",
+        w_p_adj < 0.01  ~ "**",
+        w_p_adj < 0.05  ~ "*",
+        TRUE            ~ ""
+      ),
+      w_p = signif(w_p, 3),
+      w_p_adj = signif(w_p_adj, 3),
+      t_p = signif(t_p, 3),
+      w_stat = round(w_stat, 1)
+    ) %>%
+    arrange(w_p) %>%
+    kable(col.names = c("Metric", "Most Sig. Pair", "W stat", "Wilcox p",
+                         "Wilcox p (BH)", "t-test p", "Sig"),
+           caption = "Most significant pairwise comparison per metric (Wilcoxon)")
+}
+
+# Full pairwise table
+pairwise_full_table <- function(pw_df) {
+  pw_df %>%
+    select(metric_label, pair, t_stat, t_p, t_p_adj, w_stat, w_p, w_p_adj) %>%
+    mutate(
+      across(c(t_stat, w_stat), ~round(.x, 2)),
+      across(c(t_p, t_p_adj, w_p, w_p_adj), ~signif(.x, 3))
+    ) %>%
+    arrange(w_p) %>%
+    kable(col.names = c("Metric", "Pair", "t stat", "t p", "t p (BH)",
+                         "W stat", "W p", "W p (BH)"))
+}
+```
+
+::: {.panel-tabset}
+
+### 5-min
+
+```{r pairwise-5min}
+pw_5min <- run_pairwise_tests(metrics_5min, all_metric_cols)
+```
+
+**Summary — most significant pair per metric:**
+
+```{r pairwise-5min-summary}
+pairwise_summary(pw_5min)
+```
+
+<details>
+<summary>Full pairwise results (click to expand)</summary>
+
+```{r pairwise-5min-full}
+pairwise_full_table(pw_5min)
+```
+
+</details>
+
+### 1-min
+
+```{r pairwise-1min}
+pw_1min <- run_pairwise_tests(metrics_1min, all_metric_cols)
+```
+
+**Summary — most significant pair per metric:**
+
+```{r pairwise-1min-summary}
+pairwise_summary(pw_1min)
+```
+
+<details>
+<summary>Full pairwise results (click to expand)</summary>
+
+```{r pairwise-1min-full}
+pairwise_full_table(pw_1min)
+```
+
+</details>
+
+:::
+
+
+## 6 PCA Analysis
+
+```{r pca-helper}
+run_pca_analysis <- function(df, metric_cols, title_prefix = "") {
+  # Select metric columns and condition
+  df_pca <- df %>% select(id, condition, all_of(metric_cols))
+
+  # Report NA count
+  n_na <- sum(!complete.cases(df_pca %>% select(all_of(metric_cols))))
+  if (n_na > 0) {
+    cat(sprintf("Note: %d subjects removed due to NA in PCA input columns.\n", n_na))
+  }
+
+  # Remove NAs for PCA
+  df_complete <- df_pca %>% filter(complete.cases(across(all_of(metric_cols))))
+
+  # Remove zero-variance columns
+  df_num <- df_complete %>% select(all_of(metric_cols))
+  zero_var <- names(df_num)[map_lgl(df_num, ~sd(.x, na.rm = TRUE) == 0)]
+  if (length(zero_var) > 0) {
+    cat(sprintf("Removed %d zero-variance columns: %s\n",
+                length(zero_var), paste(zero_var, collapse = ", ")))
+    metric_cols <- setdiff(metric_cols, zero_var)
+    df_num <- df_complete %>% select(all_of(metric_cols))
+  }
+
+  stopifnot(nrow(df_num) >= 2, ncol(df_num) >= 2)
+
+  # PCA
+  pca_res <- prcomp(df_num, center = TRUE, scale. = TRUE)
+
+  # Variance explained
+  var_exp <- (pca_res$sdev^2) / sum(pca_res$sdev^2)
+  var_pct <- round(var_exp * 100, 1)
+  cum_var <- cumsum(var_pct)
+
+  # Scores with metadata
+  scores <- as.data.frame(pca_res$x) %>%
+    bind_cols(df_complete %>% select(id, condition))
+
+  # --- Plot 1: PC1 vs PC2 ---
+  p12 <- ggplot(scores, aes(x = PC1, y = PC2, color = condition)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition_colors) +
+    labs(
+      title = paste(title_prefix, "PC1 vs PC2"),
+      x = sprintf("PC1 (%.1f%%)", var_pct[1]),
+      y = sprintf("PC2 (%.1f%%)", var_pct[2]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  # --- Plot 1b: PC1 vs PC3 ---
+  p13 <- ggplot(scores, aes(x = PC1, y = PC3, color = condition)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition_colors) +
+    labs(
+      title = paste(title_prefix, "PC1 vs PC3"),
+      x = sprintf("PC1 (%.1f%%)", var_pct[1]),
+      y = sprintf("PC3 (%.1f%%)", var_pct[3]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  # --- Plot 2: PC3 vs PC4 ---
+  p34 <- ggplot(scores, aes(x = PC3, y = PC4, color = condition)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition_colors) +
+    labs(
+      title = paste(title_prefix, "PC3 vs PC4"),
+      x = sprintf("PC3 (%.1f%%)", var_pct[3]),
+      y = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  # --- PC4 pair plots ---
+  p42 <- ggplot(scores, aes(x = PC4, y = PC2, color = condition)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition_colors) +
+    labs(
+      title = paste(title_prefix, "PC4 vs PC2"),
+      x = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      y = sprintf("PC2 (%.1f%%)", var_pct[2]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  p45 <- ggplot(scores, aes(x = PC4, y = PC5, color = condition)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition_colors) +
+    labs(
+      title = paste(title_prefix, "PC4 vs PC5"),
+      x = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      y = sprintf("PC5 (%.1f%%)", var_pct[5]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  p46 <- ggplot(scores, aes(x = PC4, y = PC6, color = condition)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition_colors) +
+    labs(
+      title = paste(title_prefix, "PC4 vs PC6"),
+      x = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      y = sprintf("PC6 (%.1f%%)", var_pct[6]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  p47 <- ggplot(scores, aes(x = PC4, y = PC7, color = condition)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition_colors) +
+    labs(
+      title = paste(title_prefix, "PC4 vs PC7"),
+      x = sprintf("PC4 (%.1f%%)", var_pct[4]),
+      y = sprintf("PC7 (%.1f%%)", var_pct[7]),
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  # --- Plot 3: Loadings heatmap (PC1-PC6) ---
+  n_pcs <- min(6, ncol(pca_res$rotation))
+  loadings_df <- as.data.frame(pca_res$rotation[, 1:n_pcs]) %>%
+    rownames_to_column(var = "variable") %>%
+    mutate(variable = str_remove(variable, "^avg_hr_")) %>%
+    pivot_longer(cols = starts_with("PC"), names_to = "PC", values_to = "loading")
+
+  pc_labels <- paste0("PC", 1:n_pcs, "\n(", var_pct[1:n_pcs], "%)")
+  pc_lut <- setNames(pc_labels, paste0("PC", 1:n_pcs))
+
+  p_load <- ggplot(loadings_df, aes(x = PC, y = variable, fill = loading)) +
+    geom_tile() +
+    geom_text(aes(label = sprintf("%.3f", loading)),
+              size = 2.2, color = ifelse(abs(loadings_df$loading) > 0.4, "white", "black")) +
+    scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                         midpoint = 0) +
+    scale_x_discrete(labels = pc_lut) +
+    labs(
+      title = paste(title_prefix, "Loadings Heatmap"),
+      x = "Principal Component", y = NULL, fill = "Loading"
+    ) +
+    theme(axis.text.y = element_text(size = 7))
+
+  # --- Plot 4: Variance explained ---
+  var_df <- tibble(
+    PC = factor(paste0("PC", 1:min(15, length(var_pct))),
+                levels = paste0("PC", 1:min(15, length(var_pct)))),
+    pct = var_pct[1:min(15, length(var_pct))],
+    cum = cum_var[1:min(15, length(var_pct))]
+  )
+
+  p_var <- ggplot(var_df, aes(x = PC, y = pct)) +
+    geom_col(fill = "steelblue", alpha = 0.7) +
+    geom_line(aes(y = cum, group = 1), color = "firebrick", linewidth = 1) +
+    geom_point(aes(y = cum), color = "firebrick", size = 2) +
+    geom_hline(yintercept = 80, linetype = "dashed", color = "grey50") +
+    labs(
+      title = paste(title_prefix, "Variance Explained"),
+      x = NULL, y = "Variance (%)"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  # --- 3D interactive plot: PC1 x PC2 x PC3 ---
+  p3d <- plot_ly(scores, x = ~PC1, y = ~PC2, z = ~PC3,
+                 color = ~condition, colors = condition_colors,
+                 type = "scatter3d", mode = "markers",
+                 marker = list(size = 4, opacity = 0.7)) %>%
+    layout(
+      title = paste(title_prefix, "PC1 x PC2 x PC3"),
+      scene = list(
+        xaxis = list(title = sprintf("PC1 (%.1f%%)", var_pct[1])),
+        yaxis = list(title = sprintf("PC2 (%.1f%%)", var_pct[2])),
+        zaxis = list(title = sprintf("PC3 (%.1f%%)", var_pct[3]))
+      )
+    )
+
+  # --- PCA composite index: PC1 - PC2 - PC3 ---
+  scores <- scores %>%
+    mutate(pca_dist = PC1 - PC2 - PC3)
+
+  p_dist <- ggplot(scores, aes(x = condition, y = pca_dist, color = condition)) +
+    geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+    scale_color_manual(values = condition_colors) +
+    labs(
+      title = paste(title_prefix, "PCA Composite Index"),
+      x = NULL,
+      y = "PC1 - PC2 - PC3",
+      color = "Condition"
+    ) +
+    theme(legend.position = "bottom")
+
+  # By-condition jitter for individual PCs
+  make_pc_jitter <- function(y_var, y_label) {
+    ggplot(scores, aes(x = condition, y = .data[[y_var]], color = condition)) +
+      geom_jitter(width = 0.2, size = 2.5, alpha = 0.7) +
+      scale_color_manual(values = condition_colors) +
+      labs(
+        title = paste(title_prefix, y_label),
+        x = NULL, y = y_label, color = "Condition"
+      ) +
+      theme(legend.position = "bottom")
+  }
+
+  p_pc1_jitter <- make_pc_jitter("PC1", "PC1")
+  p_pc2_jitter <- make_pc_jitter("PC2", "PC2")
+  p_pc3_jitter <- make_pc_jitter("PC3", "PC3")
+
+  # Helper for horizontal strip charts
+  make_pc_line <- function(x_var, x_label) {
+    ggplot(scores, aes(x = .data[[x_var]], y = 0, color = condition)) +
+      geom_jitter(height = 0.3, width = 0, size = 2.5, alpha = 0.7) +
+      scale_color_manual(values = condition_colors) +
+      labs(
+        title = paste(title_prefix, x_label, "(all conditions)"),
+        x = x_label, y = NULL, color = "Condition"
+      ) +
+      theme(legend.position = "bottom",
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank())
+  }
+
+  p_dist_line <- make_pc_line("pca_dist", "PC1 - PC2 - PC3")
+  p_pc1_line  <- make_pc_line("PC1", "PC1")
+  p_pc2_line  <- make_pc_line("PC2", "PC2")
+  p_pc3_line  <- make_pc_line("PC3", "PC3")
+
+  list(p12 = p12, p13 = p13, p34 = p34,
+       p42 = p42, p45 = p45, p46 = p46, p47 = p47,
+       p3d = p3d, p_dist = p_dist, p_dist_line = p_dist_line,
+       p_pc1_jitter = p_pc1_jitter, p_pc2_jitter = p_pc2_jitter, p_pc3_jitter = p_pc3_jitter,
+       p_pc1_line = p_pc1_line, p_pc2_line = p_pc2_line, p_pc3_line = p_pc3_line,
+       p_load = p_load, p_var = p_var,
+       pca_res = pca_res, scores = scores, n_na = n_na)
+}
+```
+
+### 6.1 All Metrics (36)
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r pca-all-5min, fig.width=10, fig.height=6}
+pca_all_5 <- run_pca_analysis(metrics_5min, all_metric_cols, "All Metrics —")
+pca_all_5$p12
+```
+
+```{r pca-all-5min-13, fig.width=10, fig.height=6}
+pca_all_5$p13
+ggsave("../results/figures/physionet15_pca_all_metrics_pc1_vs_pc3_5min.png",
+       pca_all_5$p13, width = 10, height = 6, dpi = 300)
+```
+
+```{r pca-all-5min-34, fig.width=10, fig.height=6}
+pca_all_5$p34
+```
+
+```{r pca-all-5min-load, fig.width=10, fig.height=10}
+pca_all_5$p_load
+```
+
+```{r pca-all-5min-var, fig.width=8, fig.height=4}
+pca_all_5$p_var
+```
+
+#### 1-min
+
+```{r pca-all-1min, fig.width=10, fig.height=6}
+pca_all_1 <- run_pca_analysis(metrics_1min, all_metric_cols, "All Metrics —")
+pca_all_1$p12
+```
+
+```{r pca-all-1min-13, fig.width=10, fig.height=6}
+pca_all_1$p13
+ggsave("../results/figures/physionet15_pca_all_metrics_pc1_vs_pc3_1min.png",
+       pca_all_1$p13, width = 10, height = 6, dpi = 300)
+```
+
+```{r pca-all-1min-34, fig.width=10, fig.height=6}
+pca_all_1$p34
+```
+
+```{r pca-all-1min-load, fig.width=10, fig.height=10}
+pca_all_1$p_load
+```
+
+```{r pca-all-1min-var, fig.width=8, fig.height=4}
+pca_all_1$p_var
+```
+
+:::
+
+### 6.2 avg_hr Metrics Only (34)
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r pca-avghr-5min, fig.width=10, fig.height=6}
+pca_avghr_5 <- run_pca_analysis(metrics_5min, avg_hr_cols, "avg_hr —")
+pca_avghr_5$p12
+```
+
+```{r pca-avghr-5min-3d, fig.width=10, fig.height=8}
+pca_avghr_5$p3d
+```
+
+```{r pca-avghr-5min-dist, fig.width=8, fig.height=5}
+pca_avghr_5$p_dist
+```
+
+```{r pca-avghr-5min-composite-loadings}
+# Composite index loadings: PC1 - PC2 - PC3 in terms of original variables
+rot <- pca_avghr_5$pca_res$rotation
+composite_coef <- rot[, "PC1"] - rot[, "PC2"] - rot[, "PC3"]
+composite_df <- tibble(
+  Variable = str_remove(names(composite_coef), "^avg_hr_"),
+  Coefficient = round(composite_coef, 4)
+) %>%
+  arrange(desc(abs(Coefficient)))
+
+knitr::kable(composite_df,
+             caption = "Composite Index (PC1 - PC2 - PC3): variable coefficients sorted by |coefficient| (5-min)",
+             align = c("l", "r"))
+```
+
+```{r pca-avghr-5min-pc1-jitter, fig.width=8, fig.height=5}
+pca_avghr_5$p_pc1_jitter
+```
+
+```{r pca-avghr-5min-pc2-jitter, fig.width=8, fig.height=5}
+pca_avghr_5$p_pc2_jitter
+```
+
+```{r pca-avghr-5min-pc3-jitter, fig.width=8, fig.height=5}
+pca_avghr_5$p_pc3_jitter
+```
+
+```{r pca-avghr-5min-dist-line, fig.width=10, fig.height=3}
+pca_avghr_5$p_dist_line
+```
+
+```{r pca-avghr-5min-pc1-line, fig.width=10, fig.height=3}
+pca_avghr_5$p_pc1_line
+```
+
+```{r pca-avghr-5min-pc2-line, fig.width=10, fig.height=3}
+pca_avghr_5$p_pc2_line
+```
+
+```{r pca-avghr-5min-pc3-line, fig.width=10, fig.height=3}
+pca_avghr_5$p_pc3_line
+```
+
+```{r pca-avghr-5min-13, fig.width=10, fig.height=6}
+pca_avghr_5$p13
+ggsave("../results/figures/physionet15_pca_avghr_metrics_pc1_vs_pc3_5min.png",
+       pca_avghr_5$p13, width = 10, height = 6, dpi = 300)
+```
+
+```{r pca-avghr-5min-34, fig.width=10, fig.height=6}
+pca_avghr_5$p34
+```
+
+```{r pca-avghr-5min-42, fig.width=10, fig.height=6}
+pca_avghr_5$p42
+```
+
+```{r pca-avghr-5min-45, fig.width=10, fig.height=6}
+pca_avghr_5$p45
+```
+
+```{r pca-avghr-5min-46, fig.width=10, fig.height=6}
+pca_avghr_5$p46
+```
+
+```{r pca-avghr-5min-47, fig.width=10, fig.height=6}
+pca_avghr_5$p47
+```
+
+```{r pca-avghr-5min-load, fig.width=10, fig.height=10}
+pca_avghr_5$p_load
+```
+
+```{r pca-avghr-5min-var, fig.width=8, fig.height=4}
+pca_avghr_5$p_var
+```
+
+```{r pca-avghr-5min-sorted-loadings, results='asis'}
+# Sorted loadings per PC with heatmap-style colored cells
+n_pcs_show <- min(8, ncol(pca_avghr_5$pca_res$rotation))
+load_mat <- pca_avghr_5$pca_res$rotation[, 1:n_pcs_show]
+
+sorted_loadings_5 <- map_dfr(1:n_pcs_show, function(k) {
+  vals <- load_mat[, k]
+  ord <- order(abs(vals), decreasing = TRUE)
+  tibble(
+    PC   = paste0("PC", k),
+    Rank = seq_along(ord),
+    Variable = str_remove(names(vals)[ord], "^avg_hr_"),
+    Loading  = round(vals[ord], 2)
+  )
+})
+
+# Color-code cells: cornflowerblue (negative) -> white (0) -> mediumvioletred (positive)
+loading_color <- function(x) {
+  # Map loading [-1, 1] to RGB
+  r <- ifelse(x >= 0, 0.78 + 0.22 * x, 0.39 + 0.61 * (1 + x))
+  g <- ifelse(x >= 0, 0.44 + 0.56 * (1 - x), 0.58 + 0.42 * (1 + x))
+  b <- ifelse(x >= 0, 0.56 + 0.44 * (1 - x), 0.93 + 0.07 * (1 + x))
+  sprintf("background-color: rgb(%.0f,%.0f,%.0f);", r*255, g*255, b*255)
+}
+
+# Build one table per PC
+for (pc in paste0("PC", 1:n_pcs_show)) {
+  pc_df <- sorted_loadings_5 %>% filter(PC == !!pc) %>% select(Rank, Variable, Loading)
+
+  # Create styled HTML table
+  cat(sprintf("\n<details><summary><b>%s — Sorted Loadings</b></summary>\n\n", pc))
+  cat("<table style='border-collapse:collapse; font-size:12px;'>\n")
+  cat("<tr><th style='padding:4px 8px;'>Rank</th><th style='padding:4px 8px;'>Variable</th><th style='padding:4px 8px;'>Loading</th></tr>\n")
+  for (i in seq_len(nrow(pc_df))) {
+    bg <- loading_color(pc_df$Loading[i])
+    # Use dark text for light backgrounds, light text for dark backgrounds
+    txt_col <- ifelse(abs(pc_df$Loading[i]) > 0.6, "color:white;", "color:black;")
+    cat(sprintf("<tr><td style='padding:2px 8px;'>%d</td><td style='padding:2px 8px;'>%s</td><td style='padding:2px 8px; %s %s text-align:right;'>%+.2f</td></tr>\n",
+                pc_df$Rank[i], pc_df$Variable[i], bg, txt_col, pc_df$Loading[i]))
+  }
+  cat("</table>\n\n</details>\n")
+}
+```
+
+#### 1-min
+
+```{r pca-avghr-1min, fig.width=10, fig.height=6}
+pca_avghr_1 <- run_pca_analysis(metrics_1min, avg_hr_cols, "avg_hr —")
+pca_avghr_1$p12
+```
+
+```{r pca-avghr-1min-3d, fig.width=10, fig.height=8}
+pca_avghr_1$p3d
+```
+
+```{r pca-avghr-1min-dist, fig.width=8, fig.height=5}
+pca_avghr_1$p_dist
+```
+
+```{r pca-avghr-1min-composite-loadings}
+rot_1 <- pca_avghr_1$pca_res$rotation
+composite_coef_1 <- rot_1[, "PC1"] - rot_1[, "PC2"] - rot_1[, "PC3"]
+composite_df_1 <- tibble(
+  Variable = str_remove(names(composite_coef_1), "^avg_hr_"),
+  Coefficient = round(composite_coef_1, 4)
+) %>%
+  arrange(desc(abs(Coefficient)))
+
+knitr::kable(composite_df_1,
+             caption = "Composite Index (PC1 - PC2 - PC3): variable coefficients sorted by |coefficient| (1-min)",
+             align = c("l", "r"))
+```
+
+```{r pca-avghr-1min-pc1-jitter, fig.width=8, fig.height=5}
+pca_avghr_1$p_pc1_jitter
+```
+
+```{r pca-avghr-1min-pc2-jitter, fig.width=8, fig.height=5}
+pca_avghr_1$p_pc2_jitter
+```
+
+```{r pca-avghr-1min-pc3-jitter, fig.width=8, fig.height=5}
+pca_avghr_1$p_pc3_jitter
+```
+
+```{r pca-avghr-1min-dist-line, fig.width=10, fig.height=3}
+pca_avghr_1$p_dist_line
+```
+
+```{r pca-avghr-1min-pc1-line, fig.width=10, fig.height=3}
+pca_avghr_1$p_pc1_line
+```
+
+```{r pca-avghr-1min-pc2-line, fig.width=10, fig.height=3}
+pca_avghr_1$p_pc2_line
+```
+
+```{r pca-avghr-1min-pc3-line, fig.width=10, fig.height=3}
+pca_avghr_1$p_pc3_line
+```
+
+```{r pca-avghr-1min-13, fig.width=10, fig.height=6}
+pca_avghr_1$p13
+ggsave("../results/figures/physionet15_pca_avghr_metrics_pc1_vs_pc3_1min.png",
+       pca_avghr_1$p13, width = 10, height = 6, dpi = 300)
+```
+
+```{r pca-avghr-1min-34, fig.width=10, fig.height=6}
+pca_avghr_1$p34
+```
+
+```{r pca-avghr-1min-42, fig.width=10, fig.height=6}
+pca_avghr_1$p42
+```
+
+```{r pca-avghr-1min-45, fig.width=10, fig.height=6}
+pca_avghr_1$p45
+```
+
+```{r pca-avghr-1min-46, fig.width=10, fig.height=6}
+pca_avghr_1$p46
+```
+
+```{r pca-avghr-1min-47, fig.width=10, fig.height=6}
+pca_avghr_1$p47
+```
+
+```{r pca-avghr-1min-load, fig.width=10, fig.height=10}
+pca_avghr_1$p_load
+```
+
+```{r pca-avghr-1min-var, fig.width=8, fig.height=4}
+pca_avghr_1$p_var
+```
+
+```{r pca-avghr-1min-sorted-loadings, results='asis'}
+n_pcs_show_1 <- min(8, ncol(pca_avghr_1$pca_res$rotation))
+load_mat_1 <- pca_avghr_1$pca_res$rotation[, 1:n_pcs_show_1]
+
+sorted_loadings_1 <- map_dfr(1:n_pcs_show_1, function(k) {
+  vals <- load_mat_1[, k]
+  ord <- order(abs(vals), decreasing = TRUE)
+  tibble(
+    PC   = paste0("PC", k),
+    Rank = seq_along(ord),
+    Variable = str_remove(names(vals)[ord], "^avg_hr_"),
+    Loading  = round(vals[ord], 2)
+  )
+})
+
+for (pc in paste0("PC", 1:n_pcs_show_1)) {
+  pc_df <- sorted_loadings_1 %>% filter(PC == !!pc) %>% select(Rank, Variable, Loading)
+
+  cat(sprintf("\n<details><summary><b>%s — Sorted Loadings</b></summary>\n\n", pc))
+  cat("<table style='border-collapse:collapse; font-size:12px;'>\n")
+  cat("<tr><th style='padding:4px 8px;'>Rank</th><th style='padding:4px 8px;'>Variable</th><th style='padding:4px 8px;'>Loading</th></tr>\n")
+  for (i in seq_len(nrow(pc_df))) {
+    bg <- loading_color(pc_df$Loading[i])
+    txt_col <- ifelse(abs(pc_df$Loading[i]) > 0.6, "color:white;", "color:black;")
+    cat(sprintf("<tr><td style='padding:2px 8px;'>%d</td><td style='padding:2px 8px;'>%s</td><td style='padding:2px 8px; %s %s text-align:right;'>%+.2f</td></tr>\n",
+                pc_df$Rank[i], pc_df$Variable[i], bg, txt_col, pc_df$Loading[i]))
+  }
+  cat("</table>\n\n</details>\n")
+}
+```
+
+:::
+
+### 6.2.1 HRV vs avg_hr PCA Scores
+
+Do traditional HRV measures (RMSSD, SDNN) agree with the principal components
+derived from the 34-metric avg_hr PCA? We assess this via correlation heatmap,
+scatter plots with identity line (z-scored), Bland-Altman agreement plots, and
+ICC (two-way, agreement).
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r hrv-pca-corr-5min, fig.width=10, fig.height=3}
+# Join HRV metrics to PCA scores
+hrv_pc_5 <- pca_avghr_5$scores %>%
+  left_join(metrics_5min %>% select(id, mean_rmssd, mean_sdnn), by = "id")
+
+# Compute correlation matrix (2 HRV rows x 8 PC columns)
+hrv_names <- c("mean_rmssd", "mean_sdnn")
+pc_names <- paste0("PC", 1:8)
+cor_mat_5 <- cor(hrv_pc_5[hrv_names], hrv_pc_5[pc_names], use = "pairwise.complete.obs")
+
+# Compute p-values
+p_mat_5 <- matrix(NA, length(hrv_names), length(pc_names),
+                  dimnames = list(hrv_names, pc_names))
+for (i in seq_along(hrv_names)) {
+  for (j in seq_along(pc_names)) {
+    test <- cor.test(hrv_pc_5[[hrv_names[i]]], hrv_pc_5[[pc_names[j]]])
+    p_mat_5[i, j] <- test$p.value
+  }
+}
+
+# Long-form for ggplot
+cor_df_5 <- as.data.frame(as.table(cor_mat_5)) %>%
+  rename(hrv = Var1, pc = Var2, r = Freq) %>%
+  mutate(
+    p = map2_dbl(hrv, pc, ~ p_mat_5[as.character(.x), as.character(.y)]),
+    label = sprintf("%.2f", r),
+    label = if_else(!is.na(p) & p < 0.05, paste0(label, "*"), label)
+  )
+
+ggplot(cor_df_5, aes(x = pc, y = hrv, fill = r)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label), size = 4) +
+  scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "HRV vs avg_hr PCA Scores — Correlation (5-min)",
+       x = NULL, y = NULL, fill = "r") +
+  theme_minimal()
+```
+
+```{r hrv-pca-scatter-5min, fig.width=16, fig.height=6}
+# Z-score both HRV and PC columns
+hrv_pc_5z <- hrv_pc_5 %>%
+  mutate(across(all_of(c(hrv_names, pc_names)), ~ scale(.x)[, 1]))
+
+# Pivot to long form for faceted scatter
+scatter_df_5 <- hrv_pc_5z %>%
+  pivot_longer(all_of(hrv_names), names_to = "hrv_metric", values_to = "hrv_z") %>%
+  pivot_longer(all_of(pc_names), names_to = "pc", values_to = "pc_z")
+
+ggplot(scatter_df_5, aes(x = pc_z, y = hrv_z)) +
+  geom_point(alpha = 0.4, size = 1) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  facet_grid(hrv_metric ~ pc, scales = "free") +
+  labs(title = "Scatter: z(HRV) vs z(PC) with Identity Line (5-min)",
+       x = "PC score (z)", y = "HRV metric (z)") +
+  theme_minimal(base_size = 9)
+```
+
+```{r hrv-pca-ba-5min, fig.width=16, fig.height=6}
+# Bland-Altman data
+ba_df_5 <- scatter_df_5 %>%
+  mutate(
+    ba_mean = (hrv_z + pc_z) / 2,
+    ba_diff = hrv_z - pc_z
+  )
+
+ba_limits_5 <- ba_df_5 %>%
+  group_by(hrv_metric, pc) %>%
+  summarise(
+    mean_diff = mean(ba_diff, na.rm = TRUE),
+    sd_diff   = sd(ba_diff, na.rm = TRUE),
+    upper     = mean_diff + 1.96 * sd_diff,
+    lower     = mean_diff - 1.96 * sd_diff,
+    .groups = "drop"
+  )
+
+ggplot(ba_df_5, aes(x = ba_mean, y = ba_diff)) +
+  geom_point(alpha = 0.4, size = 1) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "grey50") +
+  geom_hline(data = ba_limits_5, aes(yintercept = mean_diff),
+             linetype = "dashed", color = "blue") +
+  geom_hline(data = ba_limits_5, aes(yintercept = upper),
+             linetype = "dotted", color = "red") +
+  geom_hline(data = ba_limits_5, aes(yintercept = lower),
+             linetype = "dotted", color = "red") +
+  facet_grid(hrv_metric ~ pc, scales = "free") +
+  labs(title = "Bland-Altman: z(HRV) vs z(PC) (5-min)",
+       x = "Mean of z-scores", y = "Difference (HRV - PC)") +
+  theme_minimal(base_size = 9)
+```
+
+```{r hrv-pca-icc-5min}
+# ICC table
+icc_results_5 <- expand_grid(hrv = hrv_names, pc = pc_names) %>%
+  rowwise() %>%
+  mutate(
+    icc_obj = list({
+      d <- hrv_pc_5z %>% select(h = all_of(hrv), p = all_of(pc)) %>% drop_na()
+      irr::icc(d, model = "twoway", type = "agreement", unit = "single")
+    }),
+    icc_val   = icc_obj$value,
+    icc_lower = icc_obj$lbound,
+    icc_upper = icc_obj$ubound
+  ) %>%
+  ungroup() %>%
+  select(-icc_obj)
+
+kable(icc_results_5, digits = 3,
+      col.names = c("HRV Metric", "PC", "ICC", "95% CI Lower", "95% CI Upper"),
+      caption = "ICC (two-way, agreement) between z-scored HRV metrics and PC scores (5-min)")
+```
+
+#### 1-min
+
+```{r hrv-pca-corr-1min, fig.width=10, fig.height=3}
+# Join HRV metrics to PCA scores
+hrv_pc_1 <- pca_avghr_1$scores %>%
+  left_join(metrics_1min %>% select(id, mean_rmssd, mean_sdnn), by = "id")
+
+# Compute correlation matrix
+cor_mat_1 <- cor(hrv_pc_1[hrv_names], hrv_pc_1[pc_names], use = "pairwise.complete.obs")
+
+# Compute p-values
+p_mat_1 <- matrix(NA, length(hrv_names), length(pc_names),
+                  dimnames = list(hrv_names, pc_names))
+for (i in seq_along(hrv_names)) {
+  for (j in seq_along(pc_names)) {
+    test <- cor.test(hrv_pc_1[[hrv_names[i]]], hrv_pc_1[[pc_names[j]]])
+    p_mat_1[i, j] <- test$p.value
+  }
+}
+
+# Long-form for ggplot
+cor_df_1 <- as.data.frame(as.table(cor_mat_1)) %>%
+  rename(hrv = Var1, pc = Var2, r = Freq) %>%
+  mutate(
+    p = map2_dbl(hrv, pc, ~ p_mat_1[as.character(.x), as.character(.y)]),
+    label = sprintf("%.2f", r),
+    label = if_else(!is.na(p) & p < 0.05, paste0(label, "*"), label)
+  )
+
+ggplot(cor_df_1, aes(x = pc, y = hrv, fill = r)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label), size = 4) +
+  scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "HRV vs avg_hr PCA Scores — Correlation (1-min)",
+       x = NULL, y = NULL, fill = "r") +
+  theme_minimal()
+```
+
+```{r hrv-pca-scatter-1min, fig.width=16, fig.height=6}
+# Z-score both HRV and PC columns
+hrv_pc_1z <- hrv_pc_1 %>%
+  mutate(across(all_of(c(hrv_names, pc_names)), ~ scale(.x)[, 1]))
+
+# Pivot to long form for faceted scatter
+scatter_df_1 <- hrv_pc_1z %>%
+  pivot_longer(all_of(hrv_names), names_to = "hrv_metric", values_to = "hrv_z") %>%
+  pivot_longer(all_of(pc_names), names_to = "pc", values_to = "pc_z")
+
+ggplot(scatter_df_1, aes(x = pc_z, y = hrv_z)) +
+  geom_point(alpha = 0.4, size = 1) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  facet_grid(hrv_metric ~ pc, scales = "free") +
+  labs(title = "Scatter: z(HRV) vs z(PC) with Identity Line (1-min)",
+       x = "PC score (z)", y = "HRV metric (z)") +
+  theme_minimal(base_size = 9)
+```
+
+```{r hrv-pca-ba-1min, fig.width=16, fig.height=6}
+# Bland-Altman data
+ba_df_1 <- scatter_df_1 %>%
+  mutate(
+    ba_mean = (hrv_z + pc_z) / 2,
+    ba_diff = hrv_z - pc_z
+  )
+
+ba_limits_1 <- ba_df_1 %>%
+  group_by(hrv_metric, pc) %>%
+  summarise(
+    mean_diff = mean(ba_diff, na.rm = TRUE),
+    sd_diff   = sd(ba_diff, na.rm = TRUE),
+    upper     = mean_diff + 1.96 * sd_diff,
+    lower     = mean_diff - 1.96 * sd_diff,
+    .groups = "drop"
+  )
+
+ggplot(ba_df_1, aes(x = ba_mean, y = ba_diff)) +
+  geom_point(alpha = 0.4, size = 1) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "grey50") +
+  geom_hline(data = ba_limits_1, aes(yintercept = mean_diff),
+             linetype = "dashed", color = "blue") +
+  geom_hline(data = ba_limits_1, aes(yintercept = upper),
+             linetype = "dotted", color = "red") +
+  geom_hline(data = ba_limits_1, aes(yintercept = lower),
+             linetype = "dotted", color = "red") +
+  facet_grid(hrv_metric ~ pc, scales = "free") +
+  labs(title = "Bland-Altman: z(HRV) vs z(PC) (1-min)",
+       x = "Mean of z-scores", y = "Difference (HRV - PC)") +
+  theme_minimal(base_size = 9)
+```
+
+```{r hrv-pca-icc-1min}
+# ICC table
+icc_results_1 <- expand_grid(hrv = hrv_names, pc = pc_names) %>%
+  rowwise() %>%
+  mutate(
+    icc_obj = list({
+      d <- hrv_pc_1z %>% select(h = all_of(hrv), p = all_of(pc)) %>% drop_na()
+      irr::icc(d, model = "twoway", type = "agreement", unit = "single")
+    }),
+    icc_val   = icc_obj$value,
+    icc_lower = icc_obj$lbound,
+    icc_upper = icc_obj$ubound
+  ) %>%
+  ungroup() %>%
+  select(-icc_obj)
+
+kable(icc_results_1, digits = 3,
+      col.names = c("HRV Metric", "PC", "ICC", "95% CI Lower", "95% CI Upper"),
+      caption = "ICC (two-way, agreement) between z-scored HRV metrics and PC scores (1-min)")
+```
+
+:::
+
+### 6.2.2 SDNN vs -PC3: Sign-Flipped Agreement
+
+SDNN and PC3 appear anticorrelated. Flipping the sign of PC3 and comparing
+z-scored SDNN vs z(-PC3) via scatter (identity line) and Bland-Altman.
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r sdnn-pc3-scatter-5min, fig.width=6, fig.height=5}
+# Build sign-flipped z-scored data
+sdnn_pc3_5 <- hrv_pc_5 %>%
+  transmute(
+    id, condition,
+    sdnn_z  = scale(mean_sdnn)[, 1],
+    pc3_z   = -scale(PC3)[, 1]   # flip sign
+  )
+
+ggplot(sdnn_pc3_5, aes(x = pc3_z, y = sdnn_z, color = condition)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = condition_colors) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue", linewidth = 0.7) +
+  labs(title = "z(SDNN) vs z(-PC3) — 5-min",
+       x = "z(-PC3)", y = "z(SDNN)") +
+  coord_equal() +
+  theme_minimal()
+
+# Print correlation
+r_test <- cor.test(sdnn_pc3_5$sdnn_z, sdnn_pc3_5$pc3_z)
+cat(sprintf("r = %.3f, p = %.2e\n", r_test$estimate, r_test$p.value))
+```
+
+```{r sdnn-pc3-ba-5min, fig.width=6, fig.height=5}
+ba_5 <- sdnn_pc3_5 %>%
+  mutate(
+    ba_mean = (sdnn_z + pc3_z) / 2,
+    ba_diff = sdnn_z - pc3_z
+  )
+
+mean_diff_5 <- mean(ba_5$ba_diff, na.rm = TRUE)
+sd_diff_5   <- sd(ba_5$ba_diff, na.rm = TRUE)
+
+ggplot(ba_5, aes(x = ba_mean, y = ba_diff, color = condition)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = condition_colors) +
+  geom_hline(yintercept = 0, color = "grey50") +
+  geom_hline(yintercept = mean_diff_5, linetype = "dashed", color = "blue") +
+  geom_hline(yintercept = mean_diff_5 + 1.96 * sd_diff_5,
+             linetype = "dotted", color = "red") +
+  geom_hline(yintercept = mean_diff_5 - 1.96 * sd_diff_5,
+             linetype = "dotted", color = "red") +
+  labs(title = "Bland-Altman: z(SDNN) vs z(-PC3) — 5-min",
+       x = "Mean of z-scores", y = "Difference (SDNN - (-PC3))",
+       color = "Condition") +
+  theme_minimal()
+
+cat(sprintf("Mean diff = %.3f, 95%% LoA = [%.3f, %.3f]\n",
+            mean_diff_5,
+            mean_diff_5 - 1.96 * sd_diff_5,
+            mean_diff_5 + 1.96 * sd_diff_5))
+
+# ICC
+icc_5 <- irr::icc(ba_5 %>% select(sdnn_z, pc3_z),
+                   model = "twoway", type = "agreement", unit = "single")
+cat(sprintf("ICC = %.3f [%.3f, %.3f]\n", icc_5$value, icc_5$lbound, icc_5$ubound))
+```
+
+#### 1-min
+
+```{r sdnn-pc3-scatter-1min, fig.width=6, fig.height=5}
+sdnn_pc3_1 <- hrv_pc_1 %>%
+  transmute(
+    id, condition,
+    sdnn_z  = scale(mean_sdnn)[, 1],
+    pc3_z   = -scale(PC3)[, 1]
+  )
+
+ggplot(sdnn_pc3_1, aes(x = pc3_z, y = sdnn_z, color = condition)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = condition_colors) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue", linewidth = 0.7) +
+  labs(title = "z(SDNN) vs z(-PC3) — 1-min",
+       x = "z(-PC3)", y = "z(SDNN)") +
+  coord_equal() +
+  theme_minimal()
+
+r_test <- cor.test(sdnn_pc3_1$sdnn_z, sdnn_pc3_1$pc3_z)
+cat(sprintf("r = %.3f, p = %.2e\n", r_test$estimate, r_test$p.value))
+```
+
+```{r sdnn-pc3-ba-1min, fig.width=6, fig.height=5}
+ba_1 <- sdnn_pc3_1 %>%
+  mutate(
+    ba_mean = (sdnn_z + pc3_z) / 2,
+    ba_diff = sdnn_z - pc3_z
+  )
+
+mean_diff_1 <- mean(ba_1$ba_diff, na.rm = TRUE)
+sd_diff_1   <- sd(ba_1$ba_diff, na.rm = TRUE)
+
+ggplot(ba_1, aes(x = ba_mean, y = ba_diff, color = condition)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = condition_colors) +
+  geom_hline(yintercept = 0, color = "grey50") +
+  geom_hline(yintercept = mean_diff_1, linetype = "dashed", color = "blue") +
+  geom_hline(yintercept = mean_diff_1 + 1.96 * sd_diff_1,
+             linetype = "dotted", color = "red") +
+  geom_hline(yintercept = mean_diff_1 - 1.96 * sd_diff_1,
+             linetype = "dotted", color = "red") +
+  labs(title = "Bland-Altman: z(SDNN) vs z(-PC3) — 1-min",
+       x = "Mean of z-scores", y = "Difference (SDNN - (-PC3))",
+       color = "Condition") +
+  theme_minimal()
+
+cat(sprintf("Mean diff = %.3f, 95%% LoA = [%.3f, %.3f]\n",
+            mean_diff_1,
+            mean_diff_1 - 1.96 * sd_diff_1,
+            mean_diff_1 + 1.96 * sd_diff_1))
+
+icc_1 <- irr::icc(ba_1 %>% select(sdnn_z, pc3_z),
+                   model = "twoway", type = "agreement", unit = "single")
+cat(sprintf("ICC = %.3f [%.3f, %.3f]\n", icc_1$value, icc_1$lbound, icc_1$ubound))
+```
+
+:::
+
+### 6.3 Top Significant avg_hr Metrics
+
+```{r select-top-metrics}
+# Select avg_hr metrics where KW p_adj < 0.05 (from 5-min omnibus)
+top_metrics_kw <- omnibus_5min %>%
+  filter(test == "Kruskal-Wallis", metric %in% avg_hr_cols) %>%
+  filter(p_adj < 0.05) %>%
+  pull(metric)
+
+# Fallback: if fewer than 3 pass threshold, use top 10 by raw p-value
+if (length(top_metrics_kw) < 3) {
+  cat("Fewer than 3 metrics pass KW p_adj < 0.05 — using top 10 by raw p-value.\n")
+  top_metrics_kw <- omnibus_5min %>%
+    filter(test == "Kruskal-Wallis", metric %in% avg_hr_cols) %>%
+    arrange(p.value) %>%
+    slice_head(n = 10) %>%
+    pull(metric)
+}
+
+cat(sprintf("Using %d significant avg_hr metrics for PCA:\n", length(top_metrics_kw)))
+cat(paste("-", str_remove(top_metrics_kw, "^avg_hr_")), sep = "\n")
+```
+
+::: {.panel-tabset}
+
+#### 5-min
+
+```{r pca-top-5min, fig.width=10, fig.height=6}
+pca_top_5 <- run_pca_analysis(metrics_5min, top_metrics_kw, "Top Sig. —")
+pca_top_5$p12
+```
+
+```{r pca-top-5min-13, fig.width=10, fig.height=6}
+pca_top_5$p13
+ggsave("../results/figures/physionet15_pca_top_sig_metrics_pc1_vs_pc3_5min.png",
+       pca_top_5$p13, width = 10, height = 6, dpi = 300)
+```
+
+```{r pca-top-5min-34, fig.width=10, fig.height=6}
+pca_top_5$p34
+```
+
+```{r pca-top-5min-load, fig.width=10, fig.height=8}
+pca_top_5$p_load
+```
+
+```{r pca-top-5min-var, fig.width=8, fig.height=4}
+pca_top_5$p_var
+```
+
+#### 1-min
+
+```{r pca-top-1min, fig.width=10, fig.height=6}
+pca_top_1 <- run_pca_analysis(metrics_1min, top_metrics_kw, "Top Sig. —")
+pca_top_1$p12
+```
+
+```{r pca-top-1min-13, fig.width=10, fig.height=6}
+pca_top_1$p13
+ggsave("../results/figures/physionet15_pca_top_sig_metrics_pc1_vs_pc3_1min.png",
+       pca_top_1$p13, width = 10, height = 6, dpi = 300)
+```
+
+```{r pca-top-1min-34, fig.width=10, fig.height=6}
+pca_top_1$p34
+```
+
+```{r pca-top-1min-load, fig.width=10, fig.height=8}
+pca_top_1$p_load
+```
+
+```{r pca-top-1min-var, fig.width=8, fig.height=4}
+pca_top_1$p_var
+```
+
+:::
+
+
+## 7 Summary
+
+```{r summary-text, results='asis'}
+# Top 5 metrics by omnibus KW (5-min)
+top5_kw <- omnibus_5min %>%
+  filter(test == "Kruskal-Wallis") %>%
+  arrange(p_adj) %>%
+  slice_head(n = 5)
+
+cat("### Key Findings\n\n")
+cat(sprintf("**Omnibus tests**: %d of %d metrics show significant group differences (KW p_adj < 0.05, 5-min resolution).\n\n",
+            sum(omnibus_5min$test == "Kruskal-Wallis" & omnibus_5min$p_adj < 0.05, na.rm = TRUE),
+            length(all_metric_cols)))
+
+cat("**Top 5 most discriminating metrics** (Kruskal-Wallis, 5-min, BH-adjusted):\n\n")
+for (i in seq_len(nrow(top5_kw))) {
+  cat(sprintf("%d. **%s** — p_adj = %.2e %s\n",
+              i, top5_kw$metric_label[i], top5_kw$p_adj[i], top5_kw$sig[i]))
+}
+
+# Pairwise highlight
+top_pair <- pw_5min %>%
+  slice_min(w_p, n = 1, with_ties = FALSE)
+cat(sprintf("\n**Most significant pairwise comparison**: %s vs %s on metric %s (Wilcoxon p = %.2e).\n\n",
+            top_pair$group1, top_pair$group2,
+            str_remove(top_pair$metric, "^avg_hr_"),
+            top_pair$w_p))
+
+cat("**Note**: With only n = 5 per group (15 total), statistical power is very limited. ",
+    "Non-parametric tests (Kruskal-Wallis, Wilcoxon) are preferred but p-values should be ",
+    "interpreted cautiously. These results are exploratory.\n")
+```
+
+
+## 8 Metric Discriminability: PCA Composite vs SD of avg HR
+
+This section formally compares two candidate scalar summaries of 24-hour heart-rate complexity for their ability to discriminate among the three clinical groups along the hypothesised severity gradient **Normal > CHF > AF**:
+
+- **PCA Composite** (`pca_dist = PC1 - PC2 - PC3`) — a data-driven linear combination of all 34 avg-HR features.
+- **SD of avg HR** (`avg_hr_sd`) — a single, clinically interpretable variability measure.
+
+Five analyses are applied to each metric: pairwise AUCs, Kruskal-Wallis with effect size, Jonckheere-Terpstra trend test, Bhattacharyya distance, and overlap coefficient.
+
+```{r s8-helpers}
+#| include: false
+
+# --- Core workhorse: run all five discriminability analyses on one metric ---
+compare_metric <- function(df, metric_name, label) {
+  stopifnot(all(c("metric_value", "condition") %in% names(df)))
+  df <- df %>% filter(!is.na(metric_value))
+
+  levels_ordered <- levels(df$condition)
+  stopifnot(length(levels_ordered) == 3)
+
+  # ---- 1. Pairwise AUCs (DeLong CIs) ----
+  pairs <- combn(levels_ordered, 2, simplify = FALSE)
+  roc_objects <- list()
+  auc_rows <- list()
+
+  for (pair in pairs) {
+    df_pair <- df %>% filter(condition %in% pair)
+    pair_label <- paste(pair, collapse = " vs ")
+
+    roc_obj <- tryCatch(
+      pROC::roc(
+        response  = factor(df_pair$condition, levels = pair),
+        predictor = df_pair$metric_value,
+        direction = "auto",
+        quiet     = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    if (!is.null(roc_obj)) {
+      auc_val <- as.numeric(pROC::auc(roc_obj))
+      # Ensure AUC >= 0.5
+      if (auc_val < 0.5) {
+        roc_obj <- pROC::roc(
+          response  = factor(df_pair$condition, levels = rev(pair)),
+          predictor = df_pair$metric_value,
+          direction = "auto",
+          quiet     = TRUE
+        )
+        auc_val <- as.numeric(pROC::auc(roc_obj))
+      }
+      ci_obj <- tryCatch(pROC::ci.auc(roc_obj, method = "delong"), error = function(e) NULL)
+      ci_lo <- if (!is.null(ci_obj)) ci_obj[1] else NA_real_
+      ci_hi <- if (!is.null(ci_obj)) ci_obj[3] else NA_real_
+    } else {
+      auc_val <- NA_real_
+      ci_lo   <- NA_real_
+      ci_hi   <- NA_real_
+    }
+
+    roc_objects[[pair_label]] <- roc_obj
+    auc_rows[[pair_label]] <- tibble(
+      metric = label,
+      pair   = pair_label,
+      auc    = auc_val,
+      ci_lo  = ci_lo,
+      ci_hi  = ci_hi
+    )
+  }
+
+  auc_table <- bind_rows(auc_rows)
+
+  # Mean AUC for Normal-vs-disease pairs
+  hvd_pairs <- auc_table %>%
+    filter(grepl("^Normal", pair))
+  mean_hvd_auc <- mean(hvd_pairs$auc, na.rm = TRUE)
+
+  # ---- 2. Kruskal-Wallis + epsilon-squared ----
+  kw <- rstatix::kruskal_test(df, metric_value ~ condition)
+  eps2 <- rstatix::kruskal_effsize(df, metric_value ~ condition)
+
+  # ---- 3. Jonckheere-Terpstra trend test ----
+  # alternative = "decreasing" tests H1: Normal > CHF > AF
+  jt_res <- clinfun::jonckheere.test(
+    x = df$metric_value,
+    g = as.integer(df$condition),
+    alternative = "decreasing"
+  )
+  jt_stat <- jt_res$statistic
+  jt_p    <- jt_res$p.value
+
+  # ---- 4. Bhattacharyya distance (Gaussian approx), Normal vs each disease ----
+  bhatt_fn <- function(x, y) {
+    mx <- mean(x, na.rm = TRUE); sx <- sd(x, na.rm = TRUE)
+    my <- mean(y, na.rm = TRUE); sy <- sd(y, na.rm = TRUE)
+    if (is.na(sx) || is.na(sy) || sx == 0 || sy == 0) return(NA_real_)
+    sigma_bar2 <- (sx^2 + sy^2) / 2
+    (1/8) * (mx - my)^2 / sigma_bar2 + 0.5 * log(sigma_bar2 / (sx * sy))
+  }
+
+  normal_vals <- df$metric_value[df$condition == "Normal"]
+  disease_groups <- setdiff(levels_ordered, "Normal")
+  bhatt_rows <- list()
+  for (dg in disease_groups) {
+    dg_vals <- df$metric_value[df$condition == dg]
+    sw_normal  <- tryCatch(shapiro.test(normal_vals)$p.value, error = function(e) NA_real_)
+    sw_disease <- tryCatch(shapiro.test(dg_vals)$p.value, error = function(e) NA_real_)
+    bhatt_rows[[dg]] <- tibble(
+      metric       = label,
+      comparison   = paste("Normal vs", dg),
+      bhatt_dist   = bhatt_fn(normal_vals, dg_vals),
+      shapiro_normal  = sw_normal,
+      shapiro_disease = sw_disease
+    )
+  }
+  bhatt_table <- bind_rows(bhatt_rows)
+
+  # ---- 5. Overlap coefficient (KDE + trapezoidal integration) ----
+  ovl_fn <- function(x, y, n_grid = 512) {
+    rng <- range(c(x, y), na.rm = TRUE)
+    bw  <- max(bw.nrd0(x), bw.nrd0(y))
+    dx  <- density(x, bw = bw, from = rng[1], to = rng[2], n = n_grid)
+    dy  <- density(y, bw = bw, from = rng[1], to = rng[2], n = n_grid)
+    min_dens <- pmin(dx$y, dy$y)
+    ovl_raw  <- pracma::trapz(dx$x, min_dens)
+    min(1.0, ovl_raw)
+  }
+
+  ovl_rows <- list()
+  for (dg in disease_groups) {
+    dg_vals <- df$metric_value[df$condition == dg]
+    ovl_rows[[dg]] <- tibble(
+      metric     = label,
+      comparison = paste("Normal vs", dg),
+      ovl        = ovl_fn(normal_vals, dg_vals)
+    )
+  }
+  ovl_table <- bind_rows(ovl_rows)
+
+  list(
+    label       = label,
+    auc_table   = auc_table,
+    mean_hvd_auc = mean_hvd_auc,
+    roc_objects = roc_objects,
+    kw          = kw,
+    eps2        = eps2,
+    jt_stat     = jt_stat,
+    jt_p        = jt_p,
+    bhatt_table = bhatt_table,
+    ovl_table   = ovl_table
+  )
+}
+
+# --- Build a long tibble of ROC curve coordinates for ggplot ---
+make_roc_df <- function(res) {
+  roc_list <- res$roc_objects
+  rows <- list()
+  for (pair_name in names(roc_list)) {
+    roc_obj <- roc_list[[pair_name]]
+    if (is.null(roc_obj)) next
+    auc_val <- as.numeric(pROC::auc(roc_obj))
+    rows[[pair_name]] <- tibble(
+      metric      = res$label,
+      pair        = pair_name,
+      auc_label   = sprintf("%s (AUC=%.2f)", pair_name, auc_val),
+      specificity = roc_obj$specificities,
+      sensitivity = roc_obj$sensitivities
+    )
+  }
+  bind_rows(rows)
+}
+
+# --- Side-by-side comparison table ---
+format_comparison_table <- function(res_a, res_b) {
+  extract_row <- function(res) {
+    bhatt_vals <- res$bhatt_table$bhatt_dist
+    ovl_vals   <- res$ovl_table$ovl
+    tibble(
+      Metric          = res$label,
+      `Mean AUC (N vs D)` = sprintf("%.3f", res$mean_hvd_auc),
+      `KW H`          = sprintf("%.1f", res$kw$statistic),
+      `KW p`          = sprintf("%.2e", res$kw$p),
+      `e2`            = sprintf("%.3f", res$eps2$effsize),
+      `JT stat`       = sprintf("%.0f", res$jt_stat),
+      `JT p`          = sprintf("%.2e", res$jt_p),
+      `Bhatt (N vs CHF)` = sprintf("%.3f", bhatt_vals[1]),
+      `Bhatt (N vs AF)`  = sprintf("%.3f", bhatt_vals[2]),
+      `OVL (N vs CHF)`   = sprintf("%.3f", ovl_vals[1]),
+      `OVL (N vs AF)`    = sprintf("%.3f", ovl_vals[2])
+    )
+  }
+  bind_rows(extract_row(res_a), extract_row(res_b))
+}
+```
+
+```{r s8-prep}
+#| include: false
+
+# --- 5-min datasets ---
+cmp_pca_5 <- pca_avghr_5$scores %>%
+  select(id, condition, pca_dist) %>%
+  rename(metric_value = pca_dist)
+
+cmp_sd_5 <- metrics_5min %>%
+  select(id, condition, avg_hr_sd) %>%
+  rename(metric_value = avg_hr_sd)
+
+res_pca_5 <- compare_metric(cmp_pca_5, "pca_dist", "PCA Composite (PC1-PC2-PC3)")
+res_sd_5  <- compare_metric(cmp_sd_5,  "avg_hr_sd", "SD of avg HR")
+
+# --- 1-min datasets ---
+cmp_pca_1 <- pca_avghr_1$scores %>%
+  select(id, condition, pca_dist) %>%
+  rename(metric_value = pca_dist)
+
+cmp_sd_1 <- metrics_1min %>%
+  select(id, condition, avg_hr_sd) %>%
+  rename(metric_value = avg_hr_sd)
+
+res_pca_1 <- compare_metric(cmp_pca_1, "pca_dist", "PCA Composite (PC1-PC2-PC3)")
+res_sd_1  <- compare_metric(cmp_sd_1,  "avg_hr_sd", "SD of avg HR")
+```
+
+::: {.panel-tabset}
+
+### 5-min
+
+```{r s8-dist-plot-5min}
+#| fig.width: 10
+#| fig.height: 5
+
+bind_rows(
+  cmp_pca_5 %>% mutate(metric = "PCA Composite (PC1-PC2-PC3)"),
+  cmp_sd_5  %>% mutate(metric = "SD of avg HR")
+) %>%
+  ggplot(aes(x = condition, y = metric_value, color = condition)) +
+  geom_violin(aes(fill = condition), alpha = 0.2, color = NA) +
+  geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
+  facet_wrap(~ metric, scales = "free_y") +
+  scale_color_manual(values = condition_colors) +
+  scale_fill_manual(values = condition_colors) +
+  labs(
+    title = "Distribution by group — 5-min resolution",
+    x = NULL, y = "Metric value", color = "Condition", fill = "Condition"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+```{r s8-roc-5min}
+#| fig.width: 12
+#| fig.height: 6
+
+roc_df_5 <- bind_rows(make_roc_df(res_pca_5), make_roc_df(res_sd_5))
+
+ggplot(roc_df_5, aes(x = 1 - specificity, y = sensitivity)) +
+  geom_line(color = "#0072B2", linewidth = 0.8) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  facet_grid(metric ~ auc_label) +
+  labs(
+    title = "ROC curves — 5-min resolution",
+    x = "1 - Specificity", y = "Sensitivity"
+  ) +
+  coord_equal() +
+  theme(strip.text = element_text(size = 7))
+```
+
+```{r s8-auc-table-5min}
+auc_combined_5 <- bind_rows(res_pca_5$auc_table, res_sd_5$auc_table) %>%
+  mutate(
+    AUC_CI = sprintf("%.3f [%.3f, %.3f]", auc, ci_lo, ci_hi),
+    interpretation = case_when(
+      !grepl("^Normal", pair) ~ "",
+      auc >= 0.9 ~ "Excellent",
+      auc >= 0.8 ~ "Good",
+      auc >= 0.7 ~ "Fair",
+      auc >= 0.6 ~ "Poor",
+      TRUE        ~ "Fail"
+    )
+  ) %>%
+  select(metric, pair, AUC_CI, interpretation)
+
+kable(auc_combined_5, caption = "Pairwise AUCs with 95% DeLong CIs — 5-min")
+```
+
+```{r s8-comparison-table-5min}
+kable(
+  format_comparison_table(res_pca_5, res_sd_5),
+  caption = "Discriminability comparison — 5-min resolution"
+)
+```
+
+```{r s8-normality-flag-5min}
+#| results: asis
+
+bhatt_all_5 <- bind_rows(res_pca_5$bhatt_table, res_sd_5$bhatt_table)
+violations_5 <- bhatt_all_5 %>%
+  filter(shapiro_normal < 0.05 | shapiro_disease < 0.05)
+
+if (nrow(violations_5) > 0) {
+  cat("\n\n> **Normality caveat (5-min):** Shapiro-Wilk p < 0.05 detected for the following,",
+      "meaning the Gaussian-approximation Bhattacharyya distances should be interpreted with caution:\n>\n")
+  for (i in seq_len(nrow(violations_5))) {
+    row <- violations_5[i, ]
+    cat(sprintf("> - %s, %s (Shapiro p: Normal=%.3f, Disease=%.3f)\n",
+                row$metric, row$comparison, row$shapiro_normal, row$shapiro_disease))
+  }
+  cat("\n")
+}
+```
+
+### 1-min
+
+```{r s8-dist-plot-1min}
+#| fig.width: 10
+#| fig.height: 5
+
+bind_rows(
+  cmp_pca_1 %>% mutate(metric = "PCA Composite (PC1-PC2-PC3)"),
+  cmp_sd_1  %>% mutate(metric = "SD of avg HR")
+) %>%
+  ggplot(aes(x = condition, y = metric_value, color = condition)) +
+  geom_violin(aes(fill = condition), alpha = 0.2, color = NA) +
+  geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
+  facet_wrap(~ metric, scales = "free_y") +
+  scale_color_manual(values = condition_colors) +
+  scale_fill_manual(values = condition_colors) +
+  labs(
+    title = "Distribution by group — 1-min resolution",
+    x = NULL, y = "Metric value", color = "Condition", fill = "Condition"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+```{r s8-roc-1min}
+#| fig.width: 12
+#| fig.height: 6
+
+roc_df_1 <- bind_rows(make_roc_df(res_pca_1), make_roc_df(res_sd_1))
+
+ggplot(roc_df_1, aes(x = 1 - specificity, y = sensitivity)) +
+  geom_line(color = "#0072B2", linewidth = 0.8) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  facet_grid(metric ~ auc_label) +
+  labs(
+    title = "ROC curves — 1-min resolution",
+    x = "1 - Specificity", y = "Sensitivity"
+  ) +
+  coord_equal() +
+  theme(strip.text = element_text(size = 7))
+```
+
+```{r s8-auc-table-1min}
+auc_combined_1 <- bind_rows(res_pca_1$auc_table, res_sd_1$auc_table) %>%
+  mutate(
+    AUC_CI = sprintf("%.3f [%.3f, %.3f]", auc, ci_lo, ci_hi),
+    interpretation = case_when(
+      !grepl("^Normal", pair) ~ "",
+      auc >= 0.9 ~ "Excellent",
+      auc >= 0.8 ~ "Good",
+      auc >= 0.7 ~ "Fair",
+      auc >= 0.6 ~ "Poor",
+      TRUE        ~ "Fail"
+    )
+  ) %>%
+  select(metric, pair, AUC_CI, interpretation)
+
+kable(auc_combined_1, caption = "Pairwise AUCs with 95% DeLong CIs — 1-min")
+```
+
+```{r s8-comparison-table-1min}
+kable(
+  format_comparison_table(res_pca_1, res_sd_1),
+  caption = "Discriminability comparison — 1-min resolution"
+)
+```
+
+```{r s8-normality-flag-1min}
+#| results: asis
+
+bhatt_all_1 <- bind_rows(res_pca_1$bhatt_table, res_sd_1$bhatt_table)
+violations_1 <- bhatt_all_1 %>%
+  filter(shapiro_normal < 0.05 | shapiro_disease < 0.05)
+
+if (nrow(violations_1) > 0) {
+  cat("\n\n> **Normality caveat (1-min):** Shapiro-Wilk p < 0.05 detected for the following,",
+      "meaning the Gaussian-approximation Bhattacharyya distances should be interpreted with caution:\n>\n")
+  for (i in seq_len(nrow(violations_1))) {
+    row <- violations_1[i, ]
+    cat(sprintf("> - %s, %s (Shapiro p: Normal=%.3f, Disease=%.3f)\n",
+                row$metric, row$comparison, row$shapiro_normal, row$shapiro_disease))
+  }
+  cat("\n")
+}
+```
+
+:::
+
+```{r s8-recommendation}
+#| results: asis
+
+# --- Build recommendation from all results ---
+cat("### Recommendation\n\n")
+
+# Compare mean AUCs across resolutions
+cat(sprintf(
+  "**Mean Normal-vs-Disease AUC**: PCA Composite = %.3f (5-min) / %.3f (1-min); SD of avg HR = %.3f (5-min) / %.3f (1-min).\n\n",
+  res_pca_5$mean_hvd_auc, res_pca_1$mean_hvd_auc,
+  res_sd_5$mean_hvd_auc, res_sd_1$mean_hvd_auc
+))
+
+# Compare JT p-values
+cat(sprintf(
+  "**Jonckheere-Terpstra trend test** (decreasing across Normal > CHF > AF): PCA p = %.2e (5-min) / %.2e (1-min); SD p = %.2e (5-min) / %.2e (1-min).\n\n",
+  res_pca_5$jt_p, res_pca_1$jt_p,
+  res_sd_5$jt_p, res_sd_1$jt_p
+))
+
+# Compare OVLs (lower = better separation)
+mean_ovl_pca_5 <- mean(res_pca_5$ovl_table$ovl, na.rm = TRUE)
+mean_ovl_sd_5  <- mean(res_sd_5$ovl_table$ovl, na.rm = TRUE)
+mean_ovl_pca_1 <- mean(res_pca_1$ovl_table$ovl, na.rm = TRUE)
+mean_ovl_sd_1  <- mean(res_sd_1$ovl_table$ovl, na.rm = TRUE)
+
+cat(sprintf(
+  "**Mean overlap coefficient** (Normal vs Disease; lower = better separation): PCA = %.3f (5-min) / %.3f (1-min); SD = %.3f (5-min) / %.3f (1-min).\n\n",
+  mean_ovl_pca_5, mean_ovl_pca_1,
+  mean_ovl_sd_5, mean_ovl_sd_1
+))
+
+# Winner logic
+pca_auc_better <- (res_pca_5$mean_hvd_auc > res_sd_5$mean_hvd_auc) +
+                  (res_pca_1$mean_hvd_auc > res_sd_1$mean_hvd_auc)
+pca_jt_better  <- (res_pca_5$jt_p < res_sd_5$jt_p) +
+                  (res_pca_1$jt_p < res_sd_1$jt_p)
+pca_ovl_better <- (mean_ovl_pca_5 < mean_ovl_sd_5) +
+                  (mean_ovl_pca_1 < mean_ovl_sd_1)
+pca_score <- pca_auc_better + pca_jt_better + pca_ovl_better  # out of 6
+
+if (pca_score >= 4) {
+  winner <- "PCA Composite (PC1-PC2-PC3)"
+  reason <- "higher mean AUC, stronger monotone trend, and/or lower distributional overlap across resolutions"
+} else if (pca_score <= 2) {
+  winner <- "SD of avg HR"
+  reason <- "higher mean AUC, stronger monotone trend, and/or lower distributional overlap across resolutions"
+} else {
+  winner <- "neither metric clearly dominates"
+  reason <- "the two metrics show mixed advantages across criteria and resolutions"
+}
+
+cat(sprintf("**Overall**: %s appears to better satisfy both separation and ordering criteria (%s).\n\n", winner, reason))
+
+cat("**Caveats**:\n\n")
+cat("1. Each group has only n = 5, leading to very wide AUC confidence intervals and limited statistical power for all comparisons.\n")
+cat("2. Shapiro-Wilk violations (see normality flags above) mean that the Gaussian-approximation Bhattacharyya distances are approximate.\n")
+cat("3. The PCA composite was evaluated on the same data used to derive the PCA loadings; its AUCs are therefore **optimistic** relative to out-of-sample performance.\n")
+cat("4. Superior discriminability does not imply causality — a metric that separates groups may reflect confounders (e.g., age, medication) rather than disease per se.\n")
+```

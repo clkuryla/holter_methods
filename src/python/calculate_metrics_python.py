@@ -365,6 +365,52 @@ def extract_cosinor_features(
     return pd.DataFrame(rows)
 
 
+def compute_residuals(participants: dict[str, dict[str, Any]]) -> None:
+    """Compute two-harmonic cosinor residuals and store as 'hr_residual'.
+
+    Must be called AFTER ``extract_cosinor_features``, which stores
+    ``fitted_2h`` and ``residual_1h`` on each participant dict.
+
+    Fallback chain:
+      1. hr - fitted_2h  (two-harmonic residual)
+      2. residual_1h     (single-harmonic residual, if 2h fit failed)
+      3. hr - mean(hr)   (mean-centered, if both fits failed; flagged)
+    """
+    n_2h = n_1h = n_mean = 0
+    for pid, pdata in participants.items():
+        hr = pdata["hr"]
+        fitted_2h = pdata.get("fitted_2h")
+        residual_1h = pdata.get("residual_1h")
+
+        if fitted_2h is not None and np.isfinite(fitted_2h).all():
+            pdata["hr_residual"] = hr - fitted_2h
+            n_2h += 1
+        elif residual_1h is not None and np.isfinite(residual_1h).all():
+            pdata["hr_residual"] = residual_1h
+            n_1h += 1
+        else:
+            pdata["hr_residual"] = hr - np.nanmean(hr)
+            pdata["residual_fallback"] = True
+            n_mean += 1
+
+    print(f"\nResidual computation: {n_2h} two-harmonic, "
+          f"{n_1h} single-harmonic fallback, {n_mean} mean-centered fallback")
+    if n_mean > 0:
+        flagged = [pid for pid, p in participants.items()
+                   if p.get("residual_fallback")]
+        warnings.warn(
+            f"{n_mean} participant(s) used mean-centered fallback: {flagged}"
+        )
+
+
+def compute_cv(series: np.ndarray) -> float:
+    """Coefficient of variation: std / |mean|. Returns NaN if mean ≈ 0."""
+    m = np.nanmean(series)
+    if abs(m) < 1e-10:
+        return np.nan
+    return float(np.nanstd(series) / abs(m))
+
+
 # ---------------------------------------------------------------------------
 # Nonparametric circadian features
 # ---------------------------------------------------------------------------
@@ -622,6 +668,8 @@ def compute_spectral_features(
 
 def extract_spectral_and_rhythm_features(
     participants: dict[str, dict[str, Any]],
+    series_key: str = "hr",
+    col_prefix: str = "",
 ) -> pd.DataFrame:
     """Compute spectral features for all participants.
 
@@ -631,9 +679,13 @@ def extract_spectral_and_rhythm_features(
     """
     rows: list[dict[str, Any]] = []
     for pid, pdata in participants.items():
-        spec = compute_spectral_features(pdata["hr"])
+        spec = compute_spectral_features(pdata[series_key])
         rows.append({"id": pid, "condition": pdata["condition"], **spec})
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    if col_prefix:
+        df = df.rename(columns={c: col_prefix + c for c in df.columns
+                                if c not in ("id", "condition")})
+    return df
 
 
 # ---------------------------------------------------------------------------
@@ -773,6 +825,8 @@ def compute_higuchi_fd(series: np.ndarray, kmax: int = 15) -> dict[str, float]:
 
 def extract_complexity_features(
     participants: dict[str, dict[str, Any]],
+    series_key: str = "hr",
+    col_prefix: str = "",
 ) -> pd.DataFrame:
     """Compute all complexity features for all participants.
 
@@ -791,7 +845,7 @@ def extract_complexity_features(
 
     rows: list[dict[str, Any]] = []
     for pid, pdata in participants.items():
-        hr = pdata["hr"]
+        hr = pdata[series_key]
         row: dict[str, Any] = {"id": pid, "condition": pdata["condition"]}
         for name, func in feature_funcs:
             try:
@@ -813,7 +867,11 @@ def extract_complexity_features(
                 else:
                     row[name] = np.nan
         rows.append(row)
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    if col_prefix:
+        df = df.rename(columns={c: col_prefix + c for c in df.columns
+                                if c not in ("id", "condition")})
+    return df
 
 
 # ---------------------------------------------------------------------------
@@ -897,11 +955,13 @@ def compute_dfa(series: np.ndarray) -> dict[str, float]:
 
 def extract_temporal_features(
     participants: dict[str, dict[str, Any]],
+    series_key: str = "hr",
+    col_prefix: str = "",
 ) -> pd.DataFrame:
     """Compute ACF and DFA features for all participants."""
     rows: list[dict[str, Any]] = []
     for pid, pdata in participants.items():
-        hr = pdata["hr"]
+        hr = pdata[series_key]
         row: dict[str, Any] = {"id": pid, "condition": pdata["condition"]}
         for name, func in [("acf", compute_acf_features), ("dfa", compute_dfa)]:
             try:
@@ -916,7 +976,11 @@ def extract_temporal_features(
                     row["dfa_alpha"] = np.nan
                     row["dfa_r_squared"] = np.nan
         rows.append(row)
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    if col_prefix:
+        df = df.rename(columns={c: col_prefix + c for c in df.columns
+                                if c not in ("id", "condition")})
+    return df
 
 
 # ---------------------------------------------------------------------------
@@ -1100,6 +1164,8 @@ def compute_transition_features(
 
 def extract_dynamical_features(
     participants: dict[str, dict[str, Any]],
+    series_key: str = "hr",
+    col_prefix: str = "",
 ) -> pd.DataFrame:
     """Compute RQA and transition matrix features for all participants."""
     rqa_nan = {
@@ -1115,7 +1181,7 @@ def extract_dynamical_features(
 
     rows: list[dict[str, Any]] = []
     for pid, pdata in participants.items():
-        hr = pdata["hr"]
+        hr = pdata[series_key]
         row: dict[str, Any] = {"id": pid, "condition": pdata["condition"]}
         for name, func, nan_dict in [
             ("rqa", compute_rqa_features, rqa_nan),
@@ -1127,7 +1193,11 @@ def extract_dynamical_features(
                 warnings.warn(f"{name} failed for {pid}: {e}")
                 row.update(nan_dict)
         rows.append(row)
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    if col_prefix:
+        df = df.rename(columns={c: col_prefix + c for c in df.columns
+                                if c not in ("id", "condition")})
+    return df
 
 
 # ---------------------------------------------------------------------------
@@ -1248,6 +1318,17 @@ if __name__ == "__main__":
         ["r_squared_1h", "r_squared_2h", "r_squared_improvement"]
     ].mean().to_string())
 
+    # --- 0a. Compute residuals (for Pass 2 downstream use) ---
+    print("\nComputing two-harmonic cosinor residuals...")
+    compute_residuals(data)
+
+    # Spot-check: residual variance should be lower than raw HR variance
+    _spot_ids = list(data.keys())[:3]
+    for _sid in _spot_ids:
+        _raw_std = np.std(data[_sid]["hr"])
+        _res_std = np.std(data[_sid]["hr_residual"])
+        print(f"  {_sid}: raw HR std={_raw_std:.2f}, residual std={_res_std:.2f}")
+
     # --- 0b. Nonparametric circadian features ---
     print("\nComputing nonparametric circadian features...")
     nonparam_df = extract_nonparametric_features(data)
@@ -1313,9 +1394,40 @@ if __name__ == "__main__":
         r = merged_check["fpca_score_1"].corr(merged_check["amplitude_24h"])
         print(f"\n  Validation: corr(fpca_score_1, amplitude_24h) = {r:.3f}")
 
+    # --- 7. Descriptive stats: CV and SD (raw + residual SD) ---
+    print("\nComputing descriptive stats (cv, sd, resid_sd)...")
+    desc_rows = [{"id": pid, "condition": pdata["condition"],
+                  "cv": compute_cv(pdata["hr"]),
+                  "sd": float(np.nanstd(pdata["hr"])),
+                  "resid_sd": float(np.nanstd(pdata["hr_residual"]))}
+                 for pid, pdata in data.items()]
+    cv_df = pd.DataFrame(desc_rows)
+    print(f"  Mean CV = {cv_df['cv'].mean():.4f}, "
+          f"Mean SD = {cv_df['sd'].mean():.2f}, "
+          f"Mean resid_SD = {cv_df['resid_sd'].mean():.2f}")
+
+    # --- 8. Residual features (detrended series) ---
+    print("\nComputing residual spectral features...")
+    resid_spectral_df = extract_spectral_and_rhythm_features(
+        data, series_key="hr_residual", col_prefix="resid_")
+
+    print("Computing residual complexity features...")
+    resid_complexity_df = extract_complexity_features(
+        data, series_key="hr_residual", col_prefix="resid_")
+
+    print("Computing residual temporal features...")
+    resid_temporal_df = extract_temporal_features(
+        data, series_key="hr_residual", col_prefix="resid_")
+
+    print("Computing residual dynamical features...")
+    resid_dynamical_df = extract_dynamical_features(
+        data, series_key="hr_residual", col_prefix="resid_")
+
     # --- Merge all feature DataFrames ---
     all_features_df = cosinor_df
-    for df in [nonparam_df, spectral_df, complexity_df, temporal_df, dynamical_df]:
+    for df in [nonparam_df, spectral_df, complexity_df, temporal_df, dynamical_df,
+               cv_df, resid_spectral_df, resid_complexity_df,
+               resid_temporal_df, resid_dynamical_df]:
         all_features_df = all_features_df.merge(df, on=["id", "condition"])
     all_features_df = all_features_df.merge(minirocket_df, on="id")
     all_features_df = all_features_df.merge(fpca_df, on="id")
@@ -1332,8 +1444,8 @@ if __name__ == "__main__":
     all_features_df.to_csv(csv_path, index=False)
     print(f"\nSaved to {csv_path}")
 
-    # --- Save participants pickle ---
-    pkl_path = _PROJECT_ROOT / "data_processed" / "thew" / "pass2_participants_raw.pkl"
+    # --- Save participants pickle (with residuals for Pass 2) ---
+    pkl_path = _PROJECT_ROOT / "data_processed" / "thew" / "pass1_participants_with_residuals.pkl"
     pkl_path.parent.mkdir(parents=True, exist_ok=True)
     with open(pkl_path, "wb") as f:
         pickle.dump(data, f)
@@ -1342,37 +1454,67 @@ if __name__ == "__main__":
     # --- Final summary ---
     id_cond_cols = {"id", "condition", "condition_3group"}
     feature_cols_all = [c for c in all_features_df.columns if c not in id_cond_cols]
-    n_cosinor = len([c for c in cosinor_df.columns if c not in {"id", "condition"}])
-    n_nonparam = len([c for c in nonparam_df.columns if c not in {"id", "condition"}])
-    n_spectral = len([c for c in spectral_df.columns if c not in {"id", "condition"}])
-    n_complexity = len([c for c in complexity_df.columns if c not in {"id", "condition"}])
-    n_temporal = len([c for c in temporal_df.columns if c not in {"id", "condition"}])
-    n_dynamical = len([c for c in dynamical_df.columns if c not in {"id", "condition"}])
-    n_minirocket = len([c for c in minirocket_df.columns if c != "id"])
-    n_fpca = len([c for c in fpca_df.columns if c != "id"])
+    _fc = lambda df, excl={"id", "condition"}: len([c for c in df.columns if c not in excl])
+    n_cosinor = _fc(cosinor_df)
+    n_nonparam = _fc(nonparam_df)
+    n_spectral = _fc(spectral_df)
+    n_complexity = _fc(complexity_df)
+    n_temporal = _fc(temporal_df)
+    n_dynamical = _fc(dynamical_df)
+    n_cv = _fc(cv_df)
+    n_minirocket = _fc(minirocket_df, {"id"})
+    n_fpca = _fc(fpca_df, {"id"})
+    n_resid_spectral = _fc(resid_spectral_df)
+    n_resid_complexity = _fc(resid_complexity_df)
+    n_resid_temporal = _fc(resid_temporal_df)
+    n_resid_dynamical = _fc(resid_dynamical_df)
+    n_resid_total = n_resid_spectral + n_resid_complexity + n_resid_temporal + n_resid_dynamical
 
     print(f"\n{'='*60}")
     print(f"FINAL SUMMARY")
     print(f"{'='*60}")
     print(f"  Participants:  {len(all_features_df)}")
     print(f"  Total features: {len(feature_cols_all)}")
+    print(f"  --- Raw features ---")
     print(f"    Cosinor:          {n_cosinor}")
     print(f"    Nonparametric:    {n_nonparam}")
     print(f"    Spectral/rhythm:  {n_spectral}")
     print(f"    Complexity:       {n_complexity}")
     print(f"    Temporal:         {n_temporal}")
     print(f"    Dynamical:        {n_dynamical}")
+    print(f"    Descriptive:      {n_cv}  (cv, sd, resid_sd)")
     print(f"    MiniROCKET PCs:   {n_minirocket}")
     print(f"    FPCA scores:      {n_fpca}")
+    print(f"  --- Residual features ---")
+    print(f"    resid_Spectral:   {n_resid_spectral}")
+    print(f"    resid_Complexity: {n_resid_complexity}")
+    print(f"    resid_Temporal:   {n_resid_temporal}")
+    print(f"    resid_Dynamical:  {n_resid_dynamical}")
+    print(f"    (subtotal):       {n_resid_total}")
 
-    # Key features by 3-group condition
+    # --- Pass 1 circadian features: group comparison (3-group) ---
     cond3_counts = Counter(all_features_df["condition_3group"])
-    key_features = ["iv", "pe_tau1", "sample_entropy", "acf_lag1",
-                    "dfa_alpha", "rqa_determinism", "trans_entropy"]
+    circadian_param_cols = [c for c in cosinor_df.columns if c not in {"id", "condition"}]
+    circadian_nonparam_cols = [c for c in nonparam_df.columns if c not in {"id", "condition"}]
+    fpca_cols = [c for c in fpca_df.columns if c != "id"]
+    pass1_cols = circadian_param_cols + circadian_nonparam_cols + fpca_cols
+
+    _print_condition_summary(
+        all_features_df,
+        pass1_cols,
+        "Pass 1 circadian features — Mean +/- SD by 3-group condition",
+        cond3_counts,
+        group_col="condition_3group",
+    )
+
+    # Key raw + residual features by 3-group condition
+    key_features = ["cv", "sample_entropy", "dfa_alpha", "rqa_determinism",
+                    "resid_sample_entropy", "resid_dfa_alpha",
+                    "resid_spectral_entropy", "resid_rqa_determinism"]
     _print_condition_summary(
         all_features_df,
         key_features,
-        "Key features — Mean +/- SD by 3-group condition",
+        "Key raw + residual features — Mean +/- SD by 3-group condition",
         cond3_counts,
         group_col="condition_3group",
     )

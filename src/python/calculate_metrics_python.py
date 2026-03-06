@@ -164,7 +164,209 @@ def load_data(
 
 
 # ---------------------------------------------------------------------------
-# Spectral & rhythm features
+# Circadian decomposition
+# ---------------------------------------------------------------------------
+
+def _cosinor_model(t: np.ndarray, mesor: float, amplitude: float, acrophase: float) -> np.ndarray:
+    """Single-harmonic cosinor: HR(t) = M + A * cos(2π * t/1440 - φ)."""
+    return mesor + amplitude * np.cos(2 * np.pi * t / 1440 - acrophase)
+
+
+def _cosinor_model_2h(
+    t: np.ndarray,
+    mesor: float, amp1: float, acro1: float,
+    amp2: float, acro2: float,
+) -> np.ndarray:
+    """Two-harmonic cosinor: HR(t) = M + A1·cos(2πt/1440 - φ1) + A2·cos(2πt/720 - φ2)."""
+    return (mesor
+            + amp1 * np.cos(2 * np.pi * t / 1440 - acro1)
+            + amp2 * np.cos(2 * np.pi * t / 720 - acro2))
+
+
+def fit_cosinor_single(
+    t: np.ndarray,
+    hr: np.ndarray,
+    participant_id: str = "unknown",
+) -> dict[str, Any]:
+    """Fit a single-harmonic cosinor model to one participant's 24h HR series.
+
+    Model: HR(t) = M + A * cos(2π * t/1440 - φ) + ε
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Time in minutes (e.g., 0, 5, 10, ..., 1435).
+    hr : np.ndarray
+        Heart rate values corresponding to each time point.
+    participant_id : str
+        Used in warning messages on convergence failure.
+
+    Returns
+    -------
+    dict with keys:
+        - mesor: fitted M (24h mean level)
+        - amplitude_24h: fitted A (strength of diurnal swing), constrained >= 0
+        - acrophase_24h: fitted φ converted to hours (0-24 scale, time of peak)
+        - r_squared_1h: R² goodness-of-fit (1 - SS_res / SS_tot)
+        - residuals: np.ndarray of hr - fitted values (for downstream passes)
+    """
+    nan_result: dict[str, Any] = {
+        "mesor": np.nan,
+        "amplitude_24h": np.nan,
+        "acrophase_24h": np.nan,
+        "r_squared_1h": np.nan,
+        "residuals": np.full_like(hr, np.nan, dtype=float),
+    }
+
+    try:
+        p0 = [np.mean(hr), (np.max(hr) - np.min(hr)) / 2, np.pi]
+        bounds = ([30, 0, 0], [200, 100, 2 * np.pi])
+        popt, _ = curve_fit(_cosinor_model, t, hr, p0=p0, bounds=bounds, maxfev=10000)
+    except (RuntimeError, ValueError) as e:
+        warnings.warn(f"Cosinor fit failed for {participant_id}: {e}")
+        return nan_result
+
+    mesor, amplitude, acrophase_rad = popt
+    fitted = _cosinor_model(t, *popt)
+    residuals = hr - fitted
+
+    ss_res = np.sum(residuals ** 2)
+    ss_tot = np.sum((hr - np.mean(hr)) ** 2)
+    r_squared = float(1 - ss_res / ss_tot) if ss_tot > 0 else np.nan
+
+    # Convert acrophase from radians to hours (0-24)
+    acrophase_hours = float((acrophase_rad / (2 * np.pi)) * 24) % 24
+
+    return {
+        "mesor": float(mesor),
+        "amplitude_24h": float(amplitude),
+        "acrophase_24h": acrophase_hours,
+        "r_squared_1h": r_squared,
+        "residuals": residuals,
+    }
+
+
+def fit_cosinor_two_harmonic(
+    t: np.ndarray,
+    hr: np.ndarray,
+    single_fit: dict[str, Any],
+    participant_id: str = "unknown",
+) -> dict[str, Any]:
+    """Fit a two-harmonic cosinor model to one participant's 24h HR series.
+
+    Model: HR(t) = M + A1·cos(2πt/1440 - φ1) + A2·cos(2πt/720 - φ2) + ε
+
+    Uses single-harmonic fit parameters as initial guesses for shared parameters.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Time in minutes.
+    hr : np.ndarray
+        Heart rate values.
+    single_fit : dict
+        Output from ``fit_cosinor_single`` — used to seed M, A1, φ1 initial guesses
+        and to compute r_squared_improvement.
+    participant_id : str
+        Used in warning messages on convergence failure.
+
+    Returns
+    -------
+    dict with keys:
+        - amplitude_12h: fitted A2 (12h harmonic amplitude)
+        - acrophase_12h: fitted φ2 converted to hours (0-12 scale)
+        - a2_a1_ratio: A2/A1 (NaN if A1 < 1e-6)
+        - r_squared_2h: R² of the two-harmonic model
+        - r_squared_improvement: r_squared_2h - r_squared_1h
+        - fitted_2h: np.ndarray of fitted values (for downstream residuals)
+    """
+    nan_result: dict[str, Any] = {
+        "amplitude_12h": np.nan,
+        "acrophase_12h": np.nan,
+        "a2_a1_ratio": np.nan,
+        "r_squared_2h": np.nan,
+        "r_squared_improvement": np.nan,
+        "fitted_2h": np.full_like(hr, np.nan, dtype=float),
+    }
+
+    # Seed from single-harmonic fit; fall back to defaults if single fit failed
+    m0 = single_fit.get("mesor", np.mean(hr))
+    a1_0 = single_fit.get("amplitude_24h", (np.max(hr) - np.min(hr)) / 2)
+    # Convert acrophase back to radians for initial guess
+    acro_hours = single_fit.get("acrophase_24h", np.nan)
+    phi1_0 = (acro_hours / 24 * 2 * np.pi) if np.isfinite(acro_hours) else np.pi
+    a2_0 = max(a1_0 / 4, 0.5) if np.isfinite(a1_0) else 1.0
+    r_sq_1h = single_fit.get("r_squared_1h", np.nan)
+
+    try:
+        p0 = [m0, a1_0, phi1_0, a2_0, np.pi]
+        bounds = (
+            [30, 0, 0, 0, 0],
+            [200, 100, 2 * np.pi, 100, 2 * np.pi],
+        )
+        popt, _ = curve_fit(_cosinor_model_2h, t, hr, p0=p0, bounds=bounds, maxfev=10000)
+    except (RuntimeError, ValueError) as e:
+        warnings.warn(f"Two-harmonic cosinor fit failed for {participant_id}: {e}")
+        return nan_result
+
+    mesor, amp1, acro1_rad, amp2, acro2_rad = popt
+    fitted = _cosinor_model_2h(t, *popt)
+
+    ss_res = np.sum((hr - fitted) ** 2)
+    ss_tot = np.sum((hr - np.mean(hr)) ** 2)
+    r_squared_2h = float(1 - ss_res / ss_tot) if ss_tot > 0 else np.nan
+
+    # Acrophase of 12h component on 0-12 scale
+    acrophase_12h = float((acro2_rad / (2 * np.pi)) * 12) % 12
+
+    a2_a1_ratio = float(amp2 / amp1) if amp1 > 1e-6 else np.nan
+
+    r_sq_improvement = (r_squared_2h - r_sq_1h) if np.isfinite(r_sq_1h) else np.nan
+
+    return {
+        "amplitude_12h": float(amp2),
+        "acrophase_12h": acrophase_12h,
+        "a2_a1_ratio": a2_a1_ratio,
+        "r_squared_2h": r_squared_2h,
+        "r_squared_improvement": r_sq_improvement,
+        "fitted_2h": fitted,
+    }
+
+
+def extract_cosinor_features(
+    participants: dict[str, dict[str, Any]],
+) -> pd.DataFrame:
+    """Fit single- and two-harmonic cosinor models to all participants.
+
+    Stores on each participant's dict:
+    - ``'residual_1h'``: residuals from single-harmonic fit
+    - ``'fitted_2h'``: fitted values from two-harmonic fit (for downstream residuals)
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: [id, condition, mesor, amplitude_24h, acrophase_24h, r_squared_1h,
+                  amplitude_12h, acrophase_12h, a2_a1_ratio, r_squared_2h,
+                  r_squared_improvement]
+    """
+    rows: list[dict[str, Any]] = []
+    for pid, pdata in participants.items():
+        t, hr = pdata["time"], pdata["hr"]
+
+        # Single-harmonic fit
+        single = fit_cosinor_single(t, hr, participant_id=pid)
+        pdata["residual_1h"] = single.pop("residuals")
+
+        # Two-harmonic fit (seeded from single-harmonic results)
+        two_h = fit_cosinor_two_harmonic(t, hr, single, participant_id=pid)
+        pdata["fitted_2h"] = two_h.pop("fitted_2h")
+
+        rows.append({"id": pid, "condition": pdata["condition"], **single, **two_h})
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Nonparametric circadian features
 # ---------------------------------------------------------------------------
 
 def compute_intradaily_variability(series: np.ndarray) -> float:
@@ -183,6 +385,172 @@ def compute_intradaily_variability(series: np.ndarray) -> float:
     ss_diff = np.sum(np.diff(series) ** 2)
     return float(n * ss_diff / ((n - 1) * ss_dev))
 
+
+def compute_nonparametric_circadian(
+    t: np.ndarray,
+    hr: np.ndarray,
+) -> dict[str, float]:
+    """Nonparametric circadian features from one participant's 24h HR series.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Time in minutes (e.g., 0, 5, 10, ..., 1435).
+    hr : np.ndarray
+        Heart rate values corresponding to each time point.
+
+    Returns
+    -------
+    dict with keys:
+        - peak_hr, trough_hr, peak_trough_diff: from 1h-smoothed profile
+        - time_of_peak, time_of_trough: hours (0-24) of peak/trough
+        - dip_duration: hours where raw HR < 25th percentile
+        - dip_sharpness_descent: steepest descent slope (bpm/hour, negative)
+        - dip_sharpness_ascent: steepest ascent slope (bpm/hour, positive)
+        - iv: intradaily variability (computed on raw series)
+    """
+    # 1h centered moving average (12 points at 5-min resolution)
+    smoothed = pd.Series(hr).rolling(12, center=True, min_periods=1).mean().values
+
+    # Peak and trough from smoothed profile
+    peak_idx = int(np.argmax(smoothed))
+    trough_idx = int(np.argmin(smoothed))
+    peak_hr = float(smoothed[peak_idx])
+    trough_hr = float(smoothed[trough_idx])
+    peak_trough_diff = peak_hr - trough_hr
+    time_of_peak = float(t[peak_idx] / 60)
+    time_of_trough = float(t[trough_idx] / 60)
+
+    # Dip duration: hours where raw HR < 25th percentile
+    q25 = np.percentile(hr, 25)
+    n_below = int(np.sum(hr < q25))
+    dip_duration = float(n_below * TIME_STEP / 60)
+
+    # Dip sharpness from first derivative of smoothed profile
+    # Convert from bpm/sample to bpm/hour: divide by TIME_STEP (min), multiply by 60
+    deriv = np.diff(smoothed) * (60 / TIME_STEP)
+    dip_sharpness_descent = float(np.min(deriv))
+    dip_sharpness_ascent = float(np.max(deriv))
+
+    # IV on raw series
+    iv = compute_intradaily_variability(hr)
+
+    return {
+        "peak_hr": peak_hr,
+        "trough_hr": trough_hr,
+        "peak_trough_diff": peak_trough_diff,
+        "time_of_peak": time_of_peak,
+        "time_of_trough": time_of_trough,
+        "dip_duration": dip_duration,
+        "dip_sharpness_descent": dip_sharpness_descent,
+        "dip_sharpness_ascent": dip_sharpness_ascent,
+        "iv": iv,
+    }
+
+
+def extract_nonparametric_features(
+    participants: dict[str, dict[str, Any]],
+) -> pd.DataFrame:
+    """Compute nonparametric circadian features for all participants.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: [id, condition, peak_hr, trough_hr, peak_trough_diff,
+                  time_of_peak, time_of_trough, dip_duration,
+                  dip_sharpness_descent, dip_sharpness_ascent, iv]
+    """
+    rows: list[dict[str, Any]] = []
+    for pid, pdata in participants.items():
+        result = compute_nonparametric_circadian(pdata["time"], pdata["hr"])
+        rows.append({"id": pid, "condition": pdata["condition"], **result})
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Functional PCA (cross-participant)
+# ---------------------------------------------------------------------------
+
+def compute_fpca(
+    participants: dict[str, dict[str, Any]],
+    n_components: int = 3,
+) -> tuple[pd.DataFrame, Any]:
+    """Functional PCA of 24h HR curves across all participants.
+
+    This is a cross-participant operation: all curves are analyzed together
+    to extract the dominant modes of variation in HR shape.
+
+    Uses scikit-fda for B-spline smoothing and FPCA. If scikit-fda is not
+    available, returns NaN columns so the rest of the pipeline still runs.
+
+    Parameters
+    ----------
+    participants : dict
+        Output from ``load_data()``.
+    n_components : int
+        Number of functional principal components to extract (default 3).
+
+    Returns
+    -------
+    tuple of (pd.DataFrame, FPCA object or None)
+        DataFrame with columns [id, fpca_score_1, ..., fpca_score_{n}].
+        FPCA object for later inspection/plotting (None on failure).
+    """
+    pids = list(participants.keys())
+    n_participants = len(pids)
+
+    # NaN fallback
+    nan_cols = {f"fpca_score_{j+1}": np.nan for j in range(n_components)}
+    nan_df = pd.DataFrame([{"id": pid, **nan_cols} for pid in pids])
+
+    # Assemble HR matrix — all on same 288-point grid from load_data()
+    hr_matrix = np.array([participants[pid]["hr"] for pid in pids])
+    full_time = participants[pids[0]]["time"]
+
+    try:
+        from skfda import FDataGrid
+        from skfda.preprocessing.dim_reduction import FPCA
+        from skfda.preprocessing.smoothing import BasisSmoother
+        from skfda.representation.basis import BSplineBasis
+
+        # Create functional data object
+        fd = FDataGrid(hr_matrix, grid_points=full_time)
+
+        # B-spline smoothing (n_basis=48 → ~30-min knot spacing)
+        basis = BSplineBasis(domain_range=(float(full_time[0]), float(full_time[-1])),
+                             n_basis=48)
+        smoother = BasisSmoother(basis)
+        fd_smooth = smoother.fit_transform(fd)
+
+        # FPCA
+        fpca = FPCA(n_components=n_components)
+        scores = fpca.fit_transform(fd_smooth)
+
+        # Print variance explained
+        print(f"\n  FPCA variance explained:")
+        cumvar = 0.0
+        for j, v in enumerate(fpca.explained_variance_ratio_):
+            cumvar += v
+            print(f"    FPC{j+1}: {v:.4f}  (cumulative: {cumvar:.4f})")
+
+        result = pd.DataFrame(
+            scores, columns=[f"fpca_score_{j+1}" for j in range(n_components)]
+        )
+        result.insert(0, "id", pids)
+        return result, fpca
+
+    except ImportError:
+        warnings.warn("scikit-fda not installed — skipping FPCA. "
+                       "Install with: pip install scikit-fda")
+        return nan_df, None
+    except Exception as e:
+        warnings.warn(f"FPCA failed: {e}")
+        return nan_df, None
+
+
+# ---------------------------------------------------------------------------
+# Spectral & rhythm features
+# ---------------------------------------------------------------------------
 
 def compute_spectral_features(
     series: np.ndarray,
@@ -255,18 +623,16 @@ def compute_spectral_features(
 def extract_spectral_and_rhythm_features(
     participants: dict[str, dict[str, Any]],
 ) -> pd.DataFrame:
-    """Compute IV and spectral features for all participants.
+    """Compute spectral features for all participants.
 
     Returns a DataFrame with columns:
-        id, condition, iv, power_ulf, power_circ, power_meso, power_hf,
+        id, condition, power_ulf, power_circ, power_meso, power_hf,
         spectral_entropy, circadian_power_ratio
     """
     rows: list[dict[str, Any]] = []
     for pid, pdata in participants.items():
-        hr = pdata["hr"]
-        iv = compute_intradaily_variability(hr)
-        spec = compute_spectral_features(hr)
-        rows.append({"id": pid, "condition": pdata["condition"], "iv": iv, **spec})
+        spec = compute_spectral_features(pdata["hr"])
+        rows.append({"id": pid, "condition": pdata["condition"], **spec})
     return pd.DataFrame(rows)
 
 
@@ -870,12 +1236,34 @@ if __name__ == "__main__":
     for cond in sorted(cond_counts):
         print(f"  {cond:12s}  {cond_counts[cond]}")
 
+    # --- 0. Circadian decomposition (produces residuals for downstream) ---
+    print("\nComputing circadian decomposition (single + two-harmonic cosinor)...")
+    cosinor_df = extract_cosinor_features(data)
+    print(cosinor_df[["id", "condition", "mesor", "amplitude_24h",
+                       "acrophase_24h", "r_squared_1h",
+                       "amplitude_12h", "r_squared_2h",
+                       "r_squared_improvement"]].head())
+    print("\nMean R² (1h / 2h / improvement) per condition:")
+    print(cosinor_df.groupby("condition")[
+        ["r_squared_1h", "r_squared_2h", "r_squared_improvement"]
+    ].mean().to_string())
+
+    # --- 0b. Nonparametric circadian features ---
+    print("\nComputing nonparametric circadian features...")
+    nonparam_df = extract_nonparametric_features(data)
+    _print_condition_summary(
+        nonparam_df,
+        ["peak_trough_diff", "iv"],
+        "Nonparametric circadian features — Mean +/- SD by condition",
+        cond_counts,
+    )
+
     # --- 1. Spectral & rhythm features ---
     print("\nComputing spectral & rhythm features...")
     spectral_df = extract_spectral_and_rhythm_features(data)
     _print_condition_summary(
         spectral_df,
-        ["iv", "power_ulf", "power_circ", "power_meso",
+        ["power_ulf", "power_circ", "power_meso",
          "power_hf", "spectral_entropy", "circadian_power_ratio"],
         "Spectral & rhythm features — Mean +/- SD by condition",
         cond_counts,
@@ -915,11 +1303,22 @@ if __name__ == "__main__":
     print("\nComputing MiniROCKET features...")
     minirocket_df = compute_minirocket_features(data)
 
+    # --- 6. Functional PCA ---
+    print("\nComputing Functional PCA...")
+    fpca_df, fpca_obj = compute_fpca(data)
+
+    # Validation: correlation between FPC1 and cosinor amplitude
+    if "fpca_score_1" in fpca_df.columns and fpca_df["fpca_score_1"].notna().any():
+        merged_check = cosinor_df[["id", "amplitude_24h"]].merge(fpca_df[["id", "fpca_score_1"]], on="id")
+        r = merged_check["fpca_score_1"].corr(merged_check["amplitude_24h"])
+        print(f"\n  Validation: corr(fpca_score_1, amplitude_24h) = {r:.3f}")
+
     # --- Merge all feature DataFrames ---
-    all_features_df = spectral_df
-    for df in [complexity_df, temporal_df, dynamical_df]:
+    all_features_df = cosinor_df
+    for df in [nonparam_df, spectral_df, complexity_df, temporal_df, dynamical_df]:
         all_features_df = all_features_df.merge(df, on=["id", "condition"])
     all_features_df = all_features_df.merge(minirocket_df, on="id")
+    all_features_df = all_features_df.merge(fpca_df, on="id")
 
     # --- Add condition_3group ---
     all_features_df["condition_3group"] = all_features_df["condition"].map(
@@ -943,22 +1342,28 @@ if __name__ == "__main__":
     # --- Final summary ---
     id_cond_cols = {"id", "condition", "condition_3group"}
     feature_cols_all = [c for c in all_features_df.columns if c not in id_cond_cols]
+    n_cosinor = len([c for c in cosinor_df.columns if c not in {"id", "condition"}])
+    n_nonparam = len([c for c in nonparam_df.columns if c not in {"id", "condition"}])
     n_spectral = len([c for c in spectral_df.columns if c not in {"id", "condition"}])
     n_complexity = len([c for c in complexity_df.columns if c not in {"id", "condition"}])
     n_temporal = len([c for c in temporal_df.columns if c not in {"id", "condition"}])
     n_dynamical = len([c for c in dynamical_df.columns if c not in {"id", "condition"}])
     n_minirocket = len([c for c in minirocket_df.columns if c != "id"])
+    n_fpca = len([c for c in fpca_df.columns if c != "id"])
 
     print(f"\n{'='*60}")
     print(f"FINAL SUMMARY")
     print(f"{'='*60}")
     print(f"  Participants:  {len(all_features_df)}")
     print(f"  Total features: {len(feature_cols_all)}")
+    print(f"    Cosinor:          {n_cosinor}")
+    print(f"    Nonparametric:    {n_nonparam}")
     print(f"    Spectral/rhythm:  {n_spectral}")
     print(f"    Complexity:       {n_complexity}")
     print(f"    Temporal:         {n_temporal}")
     print(f"    Dynamical:        {n_dynamical}")
     print(f"    MiniROCKET PCs:   {n_minirocket}")
+    print(f"    FPCA scores:      {n_fpca}")
 
     # Key features by 3-group condition
     cond3_counts = Counter(all_features_df["condition_3group"])

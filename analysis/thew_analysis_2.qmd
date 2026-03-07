@@ -1,0 +1,700 @@
+---
+title: "THEW Python DHI Features: Diagnostic Analysis"
+subtitle: "Sanity checks, PCA, and group comparisons for 104 Python-extracted features"
+date: today
+format:
+  gfm:
+    toc: true
+    toc-depth: 3
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 3
+    code-fold: true
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+## 1 Setup & Data Loading
+
+```{r setup}
+library(tidyverse)
+library(here)
+library(knitr)
+library(corrplot)
+library(ggrepel)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+
+# Palette: Healthy green, CAD-spectrum cornflower blue, ESRD vermillion
+oi_3 <- c("Healthy" = "#009E73", "CAD-spectrum" = "#6495ED", "ESRD" = "#D55E00")
+```
+
+```{r load-data}
+df <- read_csv(here("results/thew/thew_metrics_python_5min.csv"),
+               show_col_types = FALSE)
+
+# ---------------------------------------------------------------------------
+# Feature group definitions
+# ---------------------------------------------------------------------------
+
+# --- Raw features ---
+cosinor_cols <- c("mesor", "amplitude_24h", "acrophase_24h", "r_squared_1h",
+                  "amplitude_12h", "acrophase_12h", "a2_a1_ratio",
+                  "r_squared_2h", "r_squared_improvement")
+
+nonparametric_cols <- c("peak_hr", "trough_hr", "peak_trough_diff",
+                        "time_of_peak", "time_of_trough", "dip_duration",
+                        "dip_sharpness_descent", "dip_sharpness_ascent", "iv")
+
+spectral_cols <- c("power_ulf", "power_circ", "power_meso", "power_hf",
+                   "spectral_entropy", "circadian_power_ratio")
+
+complexity_cols <- c("perm_entropy", "pe_tau1", "pe_tau3", "pe_tau6", "pe_tau12",
+                     "pe_slope", "lzc_median", "lzc_running_mean",
+                     "sample_entropy", "mse_slope", "higuchi_fd", "hfd_instability")
+
+temporal_cols <- c("acf_lag1", "acf_lag12", "acf_lag144", "acf_first_zero",
+                   "acf_decay_rate", "dfa_alpha", "dfa_r_squared")
+
+dynamical_cols <- c("rqa_recurrence_rate", "rqa_determinism", "rqa_laminarity",
+                    "rqa_trapping_time", "rqa_entropy",
+                    "trans_entropy", "trans_diagonal_dominance", "trans_asymmetry",
+                    "trans_entropy_q1", "trans_entropy_q4")
+
+descriptive_cols <- c("cv", "sd")
+
+minirocket_cols <- paste0("minirocket_pc", 1:10)
+fpca_cols <- paste0("fpca_score_", 1:3)
+
+# --- Residual features ---
+resid_spectral_cols <- paste0("resid_", c("power_ulf", "power_circ", "power_meso",
+                              "power_hf", "spectral_entropy", "circadian_power_ratio"))
+resid_complexity_cols <- paste0("resid_", c("perm_entropy", "pe_tau1", "pe_tau3",
+                               "pe_tau6", "pe_tau12", "pe_slope", "lzc_median",
+                               "lzc_running_mean", "sample_entropy", "mse_slope",
+                               "higuchi_fd", "hfd_instability"))
+resid_temporal_cols <- paste0("resid_", c("acf_lag1", "acf_lag12", "acf_lag144",
+                              "acf_first_zero", "acf_decay_rate", "dfa_alpha",
+                              "dfa_r_squared"))
+resid_dynamical_cols <- paste0("resid_", c("rqa_recurrence_rate", "rqa_determinism",
+                               "rqa_laminarity", "rqa_trapping_time", "rqa_entropy",
+                               "trans_entropy", "trans_diagonal_dominance",
+                               "trans_asymmetry", "trans_entropy_q1", "trans_entropy_q4"))
+resid_descriptive_cols <- c("resid_sd")
+
+all_resid_cols <- c(resid_spectral_cols, resid_complexity_cols,
+                    resid_temporal_cols, resid_dynamical_cols, resid_descriptive_cols)
+
+# --- Composite groups ---
+circadian_cols <- c(cosinor_cols, nonparametric_cols, fpca_cols)
+
+all_feature_cols <- c(cosinor_cols, nonparametric_cols, spectral_cols,
+                      complexity_cols, temporal_cols, dynamical_cols,
+                      descriptive_cols, minirocket_cols, fpca_cols, all_resid_cols)
+
+# Validate columns exist
+stopifnot(all(all_feature_cols %in% colnames(df)))
+
+# Factor condition_3group with explicit order
+df <- df %>%
+  mutate(condition_3group = factor(condition_3group,
+                                   levels = c("Healthy", "CAD-spectrum", "ESRD")))
+```
+
+**Dataset summary:**
+
+```{r summary-table}
+df %>%
+  count(condition_3group, condition, name = "n") %>%
+  kable(caption = "Participant counts by condition")
+```
+
+Total: `r nrow(df)` participants, `r length(all_feature_cols)` features.
+
+## 2 NaN Audit
+
+```{r nan-audit}
+nan_counts <- df %>%
+  summarize(across(all_of(all_feature_cols), ~sum(is.na(.)))) %>%
+  pivot_longer(everything(), names_to = "feature", values_to = "n_na") %>%
+  mutate(pct_na = n_na / nrow(df) * 100) %>%
+  filter(n_na > 0) %>%
+  arrange(desc(n_na))
+
+if (nrow(nan_counts) > 0) {
+  nan_counts %>%
+    mutate(flag = ifelse(pct_na > 10, "*** >10% ***", "")) %>%
+    kable(digits = 1, caption = "Features with missing values")
+} else {
+  cat("No missing values in any feature column.")
+}
+```
+
+## 3 Correlation Heatmaps
+
+```{r corr-helpers}
+# Median-impute for correlation computation
+df_imp <- df %>%
+  mutate(across(all_of(all_feature_cols),
+                ~ifelse(is.na(.), median(., na.rm = TRUE), .)))
+
+plot_corr_heatmap <- function(cols, title, fig_height = NULL) {
+  cols_present <- intersect(cols, colnames(df_imp))
+  if (length(cols_present) < 2) { cat("Fewer than 2 features; skipping.\n"); return(invisible(NULL)) }
+  mat <- cor(df_imp[cols_present], use = "pairwise.complete.obs")
+  corrplot(mat, method = "color", type = "lower",
+           tl.cex = max(0.4, min(0.8, 12 / length(cols_present))),
+           tl.col = "black", cl.cex = 0.7,
+           title = title, mar = c(0, 0, 2, 0))
+}
+```
+
+### All Features
+
+```{r corr-all, fig.width=16, fig.height=14}
+plot_corr_heatmap(all_feature_cols, paste0("All ", length(all_feature_cols), " Features"))
+```
+
+### Highly correlated pairs (|r| > 0.95)
+
+```{r high-corr-pairs}
+cor_mat <- cor(df_imp[all_feature_cols], use = "pairwise.complete.obs")
+high_corr <- which(abs(cor_mat) > 0.95 & upper.tri(cor_mat), arr.ind = TRUE)
+if (nrow(high_corr) > 0) {
+  tibble(
+    feature_1 = rownames(cor_mat)[high_corr[, 1]],
+    feature_2 = colnames(cor_mat)[high_corr[, 2]],
+    r = cor_mat[high_corr]
+  ) %>%
+    arrange(desc(abs(r))) %>%
+    kable(digits = 4, caption = "Feature pairs with |r| > 0.95")
+} else {
+  cat("No feature pairs with |r| > 0.95.")
+}
+```
+
+### Cosinor
+
+```{r corr-cosinor, fig.width=8, fig.height=7}
+plot_corr_heatmap(cosinor_cols, "Cosinor Features")
+```
+
+### Nonparametric Circadian
+
+```{r corr-nonparametric, fig.width=8, fig.height=7}
+plot_corr_heatmap(nonparametric_cols, "Nonparametric Circadian Features")
+```
+
+### Spectral
+
+```{r corr-spectral, fig.width=7, fig.height=6}
+plot_corr_heatmap(spectral_cols, "Spectral Features")
+```
+
+### Complexity
+
+```{r corr-complexity, fig.width=10, fig.height=9}
+plot_corr_heatmap(complexity_cols, "Complexity Features")
+```
+
+### Temporal
+
+```{r corr-temporal, fig.width=8, fig.height=7}
+plot_corr_heatmap(temporal_cols, "Temporal Features")
+```
+
+### Dynamical
+
+```{r corr-dynamical, fig.width=9, fig.height=8}
+plot_corr_heatmap(dynamical_cols, "Dynamical Features")
+```
+
+### Descriptive
+
+```{r corr-descriptive, fig.width=6, fig.height=5}
+plot_corr_heatmap(c(descriptive_cols, resid_descriptive_cols), "Descriptive Features (cv, sd, resid_sd)")
+```
+
+### MiniROCKET
+
+```{r corr-minirocket, fig.width=9, fig.height=8}
+plot_corr_heatmap(minirocket_cols, "MiniROCKET PCs")
+```
+
+### FPCA
+
+```{r corr-fpca, fig.width=6, fig.height=5}
+plot_corr_heatmap(fpca_cols, "FPCA Scores")
+```
+
+### Residual Spectral
+
+```{r corr-resid-spectral, fig.width=7, fig.height=6}
+plot_corr_heatmap(resid_spectral_cols, "Residual Spectral Features")
+```
+
+### Residual Complexity
+
+```{r corr-resid-complexity, fig.width=10, fig.height=9}
+plot_corr_heatmap(resid_complexity_cols, "Residual Complexity Features")
+```
+
+### Residual Temporal
+
+```{r corr-resid-temporal, fig.width=8, fig.height=7}
+plot_corr_heatmap(resid_temporal_cols, "Residual Temporal Features")
+```
+
+### Residual Dynamical
+
+```{r corr-resid-dynamical, fig.width=9, fig.height=8}
+plot_corr_heatmap(resid_dynamical_cols, "Residual Dynamical Features")
+```
+
+## 4 PCA Analysis
+
+```{r pca-helpers}
+# ---------------------------------------------------------------------------
+# PCA helper: runs PCA, returns all plots and tables
+# ---------------------------------------------------------------------------
+run_pca_analysis <- function(data, feature_cols, title_prefix) {
+
+  cols_present <- intersect(feature_cols, colnames(data))
+  stopifnot(length(cols_present) >= 3)
+
+  # Median-impute & scale
+  data_imp <- data %>%
+    mutate(across(all_of(cols_present),
+                  ~ifelse(is.na(.), median(., na.rm = TRUE), .)))
+  pca_mat <- scale(data_imp[cols_present])
+  pca_res <- prcomp(pca_mat, center = FALSE, scale. = FALSE)
+
+  var_explained <- summary(pca_res)$importance[2, ]
+  cum_var       <- summary(pca_res)$importance[3, ]
+  n_pcs <- min(6, ncol(pca_res$x))
+
+  # --- Scree plot ---
+  n_show <- min(20, length(var_explained))
+  scree_df <- tibble(
+    PC = factor(1:n_show, levels = 1:n_show),
+    variance = var_explained[1:n_show] * 100,
+    cumulative = cum_var[1:n_show] * 100
+  )
+  p_scree <- ggplot(scree_df, aes(x = PC, y = variance)) +
+    geom_col(fill = "#56B4E9") +
+    geom_line(aes(y = cumulative, group = 1), color = "#D55E00", linewidth = 1) +
+    geom_point(aes(y = cumulative), color = "#D55E00", size = 2) +
+    labs(title = paste0(title_prefix, ": Scree Plot"),
+         x = "Principal Component", y = "Variance Explained (%)") +
+    scale_y_continuous(sec.axis = sec_axis(~., name = "Cumulative (%)"))
+
+  # --- Scores data ---
+  scores <- as.data.frame(pca_res$x[, 1:n_pcs, drop = FALSE]) %>%
+    bind_cols(data_imp %>% select(condition_3group))
+
+  # --- Violin plots for PC1–PC4 ---
+  violin_df <- scores %>%
+    pivot_longer(cols = starts_with("PC"), names_to = "PC", values_to = "score") %>%
+    mutate(PC = factor(PC, levels = paste0("PC", 1:n_pcs)))
+
+  p_violins <- ggplot(violin_df, aes(x = condition_3group, y = score,
+                                      fill = condition_3group)) +
+    geom_violin(alpha = 0.7, draw_quantiles = c(0.25, 0.5, 0.75)) +
+    geom_jitter(width = 0.15, alpha = 0.15, size = 0.5) +
+    scale_fill_manual(values = oi_3) +
+    facet_wrap(~PC, scales = "free_y", ncol = 2) +
+    labs(title = paste0(title_prefix, ": PC Score Distributions"),
+         x = NULL, y = "Score", fill = "Condition") +
+    theme(legend.position = "bottom", axis.text.x = element_blank())
+
+  # --- Score scatter plots (all pairs of PC1–PC4) ---
+  pc_pairs <- combn(1:n_pcs, 2, simplify = FALSE)
+
+  make_scatter <- function(i, j) {
+    pcx <- paste0("PC", i); pcy <- paste0("PC", j)
+    ggplot(scores, aes(x = .data[[pcx]], y = .data[[pcy]],
+                       color = condition_3group)) +
+      geom_point(alpha = 0.6, size = 2) +
+      scale_color_manual(values = oi_3) +
+      labs(title = paste0(title_prefix, ": ", pcx, " vs ", pcy),
+           x = sprintf("%s (%.1f%%)", pcx, var_explained[i] * 100),
+           y = sprintf("%s (%.1f%%)", pcy, var_explained[j] * 100),
+           color = "Condition")
+  }
+
+  scatter_plots <- map(pc_pairs, ~make_scatter(.x[1], .x[2]))
+
+  # --- Biplots (scores + loading arrows) ---
+  loadings_df <- as.data.frame(pca_res$rotation[, 1:n_pcs, drop = FALSE])
+
+  make_biplot <- function(i, j, n_arrows = 8) {
+    pcx <- paste0("PC", i); pcy <- paste0("PC", j)
+
+    # Select top features by combined loading magnitude
+    load_mag <- sqrt(loadings_df[[pcx]]^2 + loadings_df[[pcy]]^2)
+    top_idx <- order(load_mag, decreasing = TRUE)[1:min(n_arrows, nrow(loadings_df))]
+
+    # Scale arrows to fit score space
+    score_range <- max(abs(c(scores[[pcx]], scores[[pcy]])), na.rm = TRUE)
+    load_range  <- max(load_mag[top_idx])
+    scale_factor <- score_range * 0.8 / load_range
+
+    arrows_df <- tibble(
+      feature = rownames(loadings_df)[top_idx],
+      xend = loadings_df[[pcx]][top_idx] * scale_factor,
+      yend = loadings_df[[pcy]][top_idx] * scale_factor
+    )
+
+    ggplot(scores, aes(x = .data[[pcx]], y = .data[[pcy]])) +
+      geom_point(aes(color = condition_3group), alpha = 0.4, size = 1.5) +
+      scale_color_manual(values = oi_3) +
+      geom_segment(data = arrows_df, aes(x = 0, y = 0, xend = xend, yend = yend),
+                   arrow = arrow(length = unit(0.2, "cm")),
+                   color = "grey30", linewidth = 0.6) +
+      geom_text_repel(data = arrows_df, aes(x = xend, y = yend, label = feature),
+                      size = 2.5, color = "grey20", max.overlaps = 20) +
+      labs(title = paste0(title_prefix, " Biplot: ", pcx, " vs ", pcy),
+           x = sprintf("%s (%.1f%%)", pcx, var_explained[i] * 100),
+           y = sprintf("%s (%.1f%%)", pcy, var_explained[j] * 100),
+           color = "Condition")
+  }
+
+  biplot_plots <- map(pc_pairs, ~make_biplot(.x[1], .x[2]))
+
+  # --- Top loadings tables ---
+  loading_tables <- map(1:n_pcs, function(k) {
+    pc_name <- paste0("PC", k)
+    loadings_df %>%
+      rownames_to_column("feature") %>%
+      select(feature, loading = all_of(pc_name)) %>%
+      arrange(desc(abs(loading))) %>%
+      slice_head(n = 10) %>%
+      mutate(rank = row_number())
+  })
+
+  # --- Loadings heatmap (PC1–PC_n) ---
+  loadings_long <- loadings_df %>%
+    rownames_to_column(var = "variable") %>%
+    pivot_longer(cols = starts_with("PC"), names_to = "PC", values_to = "loading")
+
+  pc_labels <- paste0("PC", 1:n_pcs, "\n(", round(var_explained[1:n_pcs] * 100, 1), "%)")
+  pc_lut <- setNames(pc_labels, paste0("PC", 1:n_pcs))
+
+  p_loadings_heatmap <- ggplot(loadings_long, aes(x = PC, y = variable, fill = loading)) +
+    geom_tile() +
+    geom_text(aes(label = sprintf("%.2f", loading)),
+              size = max(1.5, min(2.2, 40 / length(cols_present))),
+              color = ifelse(abs(loadings_long$loading) > 0.4, "white", "black")) +
+    scale_fill_gradient2(low = "cornflowerblue", mid = "white", high = "mediumvioletred",
+                         midpoint = 0) +
+    scale_x_discrete(labels = pc_lut) +
+    labs(title = paste0(title_prefix, ": Loadings Heatmap"),
+         x = "Principal Component", y = NULL, fill = "Loading") +
+    theme(axis.text.y = element_text(size = max(5, min(8, 120 / length(cols_present)))))
+
+  list(
+    scree = p_scree,
+    violins = p_violins,
+    scatter_plots = scatter_plots,
+    biplot_plots = biplot_plots,
+    loading_tables = loading_tables,
+    loadings_heatmap = p_loadings_heatmap,
+    var_explained = var_explained,
+    cum_var = cum_var,
+    n_pcs = n_pcs
+  )
+}
+
+# Helper to print all PCA outputs for a given set
+print_pca_outputs <- function(pca_obj) {
+  print(pca_obj$scree)
+  cat("\n")
+  print(pca_obj$loadings_heatmap)
+  cat("\n")
+  print(pca_obj$violins)
+  cat("\n")
+  for (p in pca_obj$scatter_plots) { print(p); cat("\n") }
+  for (p in pca_obj$biplot_plots) { print(p); cat("\n") }
+  for (i in seq_along(pca_obj$loading_tables)) {
+    cat(sprintf("\n**PC%d** (%.1f%% variance)\n\n",
+                i, pca_obj$var_explained[i] * 100))
+    print(kable(pca_obj$loading_tables[[i]], digits = 4))
+    cat("\n")
+  }
+}
+```
+
+```{r pca-sets}
+# Define the 8 PCA feature sets
+pca_sets <- list(
+  "4a" = list(
+    label = "All Features (incl MiniROCKET)",
+    cols = all_feature_cols
+  ),
+  "4b" = list(
+    label = "All Features (no MiniROCKET)",
+    cols = setdiff(all_feature_cols, minirocket_cols)
+  ),
+  "4c" = list(
+    label = "Raw Interpretable Only",
+    cols = c(cosinor_cols, nonparametric_cols, spectral_cols, complexity_cols,
+             temporal_cols, dynamical_cols, descriptive_cols, fpca_cols)
+  ),
+  "4d" = list(
+    label = "Residuals Only",
+    cols = all_resid_cols
+  ),
+  "4e" = list(
+    label = "Interpretable (no Circadian, no MiniROCKET)",
+    cols = c(spectral_cols, complexity_cols, temporal_cols, dynamical_cols,
+             descriptive_cols, all_resid_cols)
+  ),
+  "4f" = list(
+    label = "Circadian Only",
+    cols = circadian_cols
+  ),
+  "4g" = list(
+    label = "MiniROCKET Only",
+    cols = minirocket_cols
+  ),
+  "4h" = list(
+    label = "Raw Non-Circadian, Non-MiniROCKET",
+    cols = c(spectral_cols, complexity_cols, temporal_cols, dynamical_cols,
+             descriptive_cols)
+  )
+)
+```
+
+### 4a. All Features (incl MiniROCKET)
+
+```{r pca-4a, fig.width=10, fig.height=7, results='asis'}
+pca_4a <- run_pca_analysis(df, pca_sets[["4a"]]$cols, pca_sets[["4a"]]$label)
+print_pca_outputs(pca_4a)
+```
+
+### 4b. All Features (no MiniROCKET)
+
+```{r pca-4b, fig.width=10, fig.height=7, results='asis'}
+pca_4b <- run_pca_analysis(df, pca_sets[["4b"]]$cols, pca_sets[["4b"]]$label)
+print_pca_outputs(pca_4b)
+```
+
+### 4c. Raw Interpretable Only
+
+```{r pca-4c, fig.width=10, fig.height=7, results='asis'}
+pca_4c <- run_pca_analysis(df, pca_sets[["4c"]]$cols, pca_sets[["4c"]]$label)
+print_pca_outputs(pca_4c)
+```
+
+### 4d. Residuals Only
+
+```{r pca-4d, fig.width=10, fig.height=7, results='asis'}
+pca_4d <- run_pca_analysis(df, pca_sets[["4d"]]$cols, pca_sets[["4d"]]$label)
+print_pca_outputs(pca_4d)
+```
+
+### 4e. Interpretable (no Circadian, no MiniROCKET)
+
+```{r pca-4e, fig.width=10, fig.height=7, results='asis'}
+pca_4e <- run_pca_analysis(df, pca_sets[["4e"]]$cols, pca_sets[["4e"]]$label)
+print_pca_outputs(pca_4e)
+```
+
+### 4f. Circadian Only
+
+```{r pca-4f, fig.width=10, fig.height=7, results='asis'}
+pca_4f <- run_pca_analysis(df, pca_sets[["4f"]]$cols, pca_sets[["4f"]]$label)
+print_pca_outputs(pca_4f)
+```
+
+### 4g. MiniROCKET Only
+
+```{r pca-4g, fig.width=10, fig.height=7, results='asis'}
+pca_4g <- run_pca_analysis(df, pca_sets[["4g"]]$cols, pca_sets[["4g"]]$label)
+print_pca_outputs(pca_4g)
+```
+
+### 4h. Raw Non-Circadian, Non-MiniROCKET
+
+```{r pca-4h, fig.width=10, fig.height=7, results='asis'}
+pca_4h <- run_pca_analysis(df, pca_sets[["4h"]]$cols, pca_sets[["4h"]]$label)
+print_pca_outputs(pca_4h)
+```
+
+## 5 Violin Plots
+
+```{r violin-helper}
+plot_violin_group <- function(data, feature_cols, group_label) {
+  cols_present <- intersect(feature_cols, colnames(data))
+  if (length(cols_present) == 0) return(invisible(NULL))
+
+  data %>%
+    select(condition_3group, all_of(cols_present)) %>%
+    pivot_longer(-condition_3group, names_to = "feature", values_to = "value") %>%
+    mutate(feature = factor(feature, levels = cols_present)) %>%
+    ggplot(aes(x = condition_3group, y = value, fill = condition_3group)) +
+    geom_violin(alpha = 0.7, draw_quantiles = c(0.25, 0.5, 0.75)) +
+    geom_jitter(width = 0.15, alpha = 0.15, size = 0.5) +
+    scale_fill_manual(values = oi_3) +
+    facet_wrap(~feature, scales = "free_y", ncol = 3) +
+    labs(title = paste0(group_label, " Features by Condition"),
+         x = NULL, y = NULL, fill = "Condition") +
+    theme(legend.position = "bottom",
+          axis.text.x = element_blank())
+}
+```
+
+### Key Features Overview
+
+```{r violin-key, fig.width=12, fig.height=12}
+key_features <- c("mesor", "amplitude_24h", "iv", "sample_entropy",
+                  "dfa_alpha", "rqa_determinism", "trans_entropy",
+                  "cv", "fpca_score_1", "minirocket_pc1",
+                  "resid_sample_entropy", "resid_dfa_alpha")
+
+key_features <- intersect(key_features, colnames(df))
+
+df %>%
+  select(condition_3group, all_of(key_features)) %>%
+  pivot_longer(-condition_3group, names_to = "feature", values_to = "value") %>%
+  mutate(feature = factor(feature, levels = key_features)) %>%
+  ggplot(aes(x = condition_3group, y = value, fill = condition_3group)) +
+  geom_violin(alpha = 0.7, draw_quantiles = c(0.25, 0.5, 0.75)) +
+  geom_jitter(width = 0.15, alpha = 0.15, size = 0.5) +
+  scale_fill_manual(values = oi_3) +
+  facet_wrap(~feature, scales = "free_y", ncol = 4) +
+  labs(title = "Key Features by Condition (3-group)",
+       x = NULL, y = NULL, fill = "Condition") +
+  theme(legend.position = "bottom",
+        axis.text.x = element_blank())
+```
+
+### Cosinor Features
+
+```{r violin-cosinor, fig.width=12, fig.height=10}
+plot_violin_group(df, cosinor_cols, "Cosinor")
+```
+
+### Nonparametric Circadian Features
+
+```{r violin-nonparametric, fig.width=12, fig.height=10}
+plot_violin_group(df, nonparametric_cols, "Nonparametric Circadian")
+```
+
+### Spectral / Rhythm Features
+
+```{r violin-spectral, fig.width=12, fig.height=8}
+plot_violin_group(df, spectral_cols, "Spectral / Rhythm")
+```
+
+### Complexity Features
+
+```{r violin-complexity, fig.width=12, fig.height=12}
+plot_violin_group(df, complexity_cols, "Complexity")
+```
+
+### Temporal / Autocorrelation Features
+
+```{r violin-temporal, fig.width=12, fig.height=8}
+plot_violin_group(df, temporal_cols, "Temporal / Autocorrelation")
+```
+
+### Dynamical / RQA Features
+
+```{r violin-dynamical, fig.width=12, fig.height=12}
+plot_violin_group(df, dynamical_cols, "Dynamical / RQA")
+```
+
+### Descriptive Features
+
+```{r violin-descriptive, fig.width=12, fig.height=5}
+plot_violin_group(df, c(descriptive_cols, resid_descriptive_cols), "Descriptive")
+```
+
+### MiniROCKET PCs
+
+```{r violin-minirocket, fig.width=12, fig.height=12}
+plot_violin_group(df, minirocket_cols, "MiniROCKET")
+```
+
+### FPCA Scores
+
+```{r violin-fpca, fig.width=12, fig.height=5}
+plot_violin_group(df, fpca_cols, "FPCA")
+```
+
+### Residual Spectral Features
+
+```{r violin-resid-spectral, fig.width=12, fig.height=8}
+plot_violin_group(df, resid_spectral_cols, "Residual Spectral")
+```
+
+### Residual Complexity Features
+
+```{r violin-resid-complexity, fig.width=12, fig.height=12}
+plot_violin_group(df, resid_complexity_cols, "Residual Complexity")
+```
+
+### Residual Temporal Features
+
+```{r violin-resid-temporal, fig.width=12, fig.height=8}
+plot_violin_group(df, resid_temporal_cols, "Residual Temporal")
+```
+
+### Residual Dynamical Features
+
+```{r violin-resid-dynamical, fig.width=12, fig.height=12}
+plot_violin_group(df, resid_dynamical_cols, "Residual Dynamical")
+```
+
+## 6 Group Comparisons (Kruskal-Wallis)
+
+```{r kruskal-wallis}
+kw_results <- map_dfr(all_feature_cols, function(feat) {
+  vals <- df[[feat]]
+  grp <- df$condition_3group
+  complete <- !is.na(vals) & !is.na(grp)
+  if (sum(complete) < 10) return(NULL)
+
+  test <- kruskal.test(vals[complete] ~ grp[complete])
+  tibble(
+    feature = feat,
+    statistic = test$statistic,
+    p_value = test$p.value,
+    df = test$parameter
+  )
+})
+
+kw_results <- kw_results %>%
+  mutate(p_adj = p.adjust(p_value, method = "BH")) %>%
+  arrange(p_value)
+
+kw_results %>%
+  filter(p_adj < 0.05) %>%
+  kable(digits = c(0, 2, 2, 0, 4),
+        caption = "Features with significant Kruskal-Wallis test (BH-adjusted p < 0.05)")
+```
+
+**Total significant (BH p < 0.05):** `r sum(kw_results$p_adj < 0.05)` / `r nrow(kw_results)` features.
+
+### Median by group for significant features
+
+```{r median-table}
+sig_features <- kw_results %>% filter(p_adj < 0.05) %>% pull(feature)
+
+if (length(sig_features) > 0) {
+  df %>%
+    select(condition_3group, all_of(sig_features)) %>%
+    pivot_longer(-condition_3group, names_to = "feature", values_to = "value") %>%
+    group_by(feature, condition_3group) %>%
+    summarize(median = median(value, na.rm = TRUE), .groups = "drop") %>%
+    pivot_wider(names_from = condition_3group, values_from = median) %>%
+    mutate(feature = factor(feature, levels = sig_features)) %>%
+    arrange(feature) %>%
+    kable(digits = 4, caption = "Median values by condition for significant features")
+}
+```
